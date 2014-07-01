@@ -167,7 +167,7 @@ if __name__=='__main__':
             log.error("The output directory already exists! Please\n"
                 "rename/move/delete it, or set the clobber (-c) flag.")
             sys.exit()
-        log.info('Concatenating data')
+        log.info('Concatenating data...')
         msname = concatenate(ms_list, options.outdir, options.parmdb)
         log.info('Concatenated MS is {0}'.format(msname))
 
@@ -181,11 +181,11 @@ if __name__=='__main__':
         UVmax = options.uvmax
 
         for imageroot, use_ion in zip(imageroots, use_ions):
-            log.info('Calling AWimager to make {0} image'.format(imageroot))
+            log.info('Calling AWimager to make {0} image...'.format(imageroot))
             if options.mask:
                 from lofar import bdsm
                 mask_image = imagedir + '/' + imageroot + '.mask'
-                log.info('Generating mask "{0}"'.format(mask_image))
+                log.info('Generating mask "{0}"...'.format(mask_image))
                 awimager(msname, imageroot, UVmax, options.size, options.npix,
                     options.threshold*5.0, clobber=options.clobber,
                     use_ion=use_ion, imagedir=imagedir)
@@ -195,12 +195,12 @@ if __name__=='__main__':
                 img.export_image(outfile=mask_image, img_type='island_mask',
                     img_format='casa', mask_dilation=2, clobber=True)
                 threshold = img.clipped_rms * 5.0
-                log.info('Cleaning to threshold of {0} Jy'.format(threshold))
+                log.info('Cleaning to threshold of {0} Jy...'.format(threshold))
                 awimager(msname, imageroot, UVmax, options.size, options.npix,
                     threshold, mask_image=mask_image, use_ion=use_ion,
                     imagedir=imagedir, logfilename=logfilename, clobber=True)
             else:
-                log.info('Cleaning to threshold of {0} Jy'.format(threshold))
+                log.info('Cleaning to threshold of {0} Jy...'.format(threshold))
                 awimager(msname, imageroot, UVmax, options.size, options.npix,
                     options.threshold, clobber=options.clobber, use_ion=use_ion,
                     imagedir=imagedir, logfilename=logfilename)
