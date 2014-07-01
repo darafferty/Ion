@@ -11,8 +11,8 @@ TEC screens for LOFAR data. The following scripts are available:
 * __ion_apply.py__: Applies the TEC screens derived by the TECSCREEN operation in LoSoTo
 * __ion_image.py__: Images, with and (optionally) without the TEC screen
 
-Peeling (ion_peel.py)
----------------------
+Peeling to Obtain Direction-dependent Phase Solutions (ion_peel.py)
+-------------------------------------------------------------------
 The ion_peel.py script takes as input a set of measurement sets at various frequencies and
 (possibly) multiple fields and performs directional calibration that can be
 used to correct for time- and position-dependent ionospheric effects. All
@@ -35,8 +35,8 @@ For more information on the options, run:
     ion_peeling.py --help
 
 
-TEC Screen Application (ion_apply.py)
--------------------------------------
+Applying a TEC Screen (ion_apply.py)
+------------------------------------
 The ion_apply.py script takes as input a H5parm file with a TEC screen fit generated
 by the TECSCREEN operation in LoSoTo. By default, the screen is exported to all
 measurement sets in the specified input directory (default is '.').
@@ -46,8 +46,8 @@ For more information on the options, run:
     ion_apply.py --help
 
 
-Imaging (ion_image.py)
-----------------------
+Imaging with a TEC Screen (ion_image.py)
+----------------------------------------
 The ion_image.py script automates the imaging of a dataset, including the
 application of a TEC screen. By default, all measurement sets in the specified
 input directory are concatenated and imaging together.
