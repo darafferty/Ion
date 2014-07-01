@@ -1,3 +1,6 @@
+#! /usr/bin/env python
+# -*- coding: utf-8 -*-
+
 """
 This script takes as input a set of measurement sets at various frequencies and
 (possibly) multiple fields and performs directional calibration that can be
