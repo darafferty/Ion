@@ -148,15 +148,12 @@ def calibrate(msname_parmdb):
     skymodel = root_dir + '/none'
     os.system("touch {0}".format(skymodel))
 
-    os.system("calibrate-stand-alone --no-columns --parmdb-name {0} {1} {2} {3}".
-        format(parmdb, msname, parset, skymodel))
+    os.system("calibrate-stand-alone --no-columns --parmdb-name {0} {1} {2} {3} "
+            "> {1}_calibrate.log 2>&1".format(parmdb, msname, parset, skymodel))
 
     parset = makeCorrectParset(root_dir)
-    os.system('calibrate-stand-alone --no-columns --parmdb-name {0} {1} {2} {3}'.
-        format(parmdb, msname, parset, skymodel))
-
-    # Make a backup
-    os.system('cp -r {0}/{1} {0}/ion_instrument_bkup'.format(msname, parmdb))
+    os.system("calibrate-stand-alone --no-columns --parmdb-name {0} {1} {2} {3} "
+            "> {1}_apply.log 2>&1".format(parmdb, msname, parset, skymodel))
 
 
 if __name__=='__main__':
@@ -195,27 +192,32 @@ if __name__=='__main__':
         if len(ms_list) == 0:
             ms_list = sorted(glob.glob(options.indir+"/*.ms.peeled"))
         if len(ms_list) == 0:
-            print('No measurement sets found in input directory. They must end in .MS, .ms, or .ms.peeled')
+            print('No measurement sets found in input directory. They must end '
+                'in .MS, .ms, or .ms.peeled')
             sys.exit()
 
-        logfilename = options.outdir + '/ion_image.log'
+        logfilename = options.outdir + '/ion_apply.log'
         init_logger(logfilename, debug=options.verbose)
         log = logging.getLogger("Main")
 
+        log.info('Exporting screens...')
         for ms in ms_list:
             # Export screens to parmdbs
-            os.system('H5parm_exporter.py {0} {1} -r ion -s {2} -i {3}'.format(h5, ms, solset, options.parmdb))
+            os.system('H5parm_exporter.py {0} {1} -r ion -s {2} -i {3} >> {4} '
+                '2>&1'.format(h5, ms, solset, options.parmdb, logfilename))
         out_parmdb = 'ion_' + options.parmdb
+        log.info('Screens exported to {0}'.format(out_parmdb))
 
         # Calibrate
+        log.info('Calibrating and applying screens...')
         workers=Pool(processes=min(len(ms_list), options.ncores))
         workers.map(calibrate, zip(ms_list, out_parmdb))
 
         # Clip high data amplitudes
         H = h5parm(h5)
         station_selection = H.getAnt(solset).keys()
-        del H
+        log.info('Clipping CORRECTED_DATA amplitudes at {0} Jy...'.format(options.threshold))
         clip(ms_list, station_selection, threshold=options.threshold)
 
-        print('TEC screen application complete.')
+        log.info('TEC screen application complete.')
 
