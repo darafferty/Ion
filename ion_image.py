@@ -52,12 +52,10 @@ class MultiLineFormatter(logging.Formatter):
         return str
 
 
-def concatenate(msnames, outdir, dryrun=False):
+def concatenate(msnames, outdir, parmdb):
     """Concatenates all MSes and returns name of concated MS"""
 
     concat_msname = outdir + "/concatenated.MS"
-    if dryrun:
-        return concat_msname
 
     for msname in msnames:
         os.system("addImagingColumns.py %s" % msname)
@@ -117,13 +115,15 @@ if __name__=='__main__':
         type='string', default='.')
     opt.add_option('-t', '--threshold', help='Clean threshold in Jy '
         '[default: %default]', type='float', default=0.5)
-    opt.add_option('-p', '--npix', help='Number of pixels in image '
+    opt.add_option('-n', '--npix', help='Number of pixels in image '
         '[default: %default]', type='int', default=2048)
+    opt.add_option('-p', '--parmdb', help='Name of parmdb instument file to use '
+        '[default: %default]', type='string', default='ion_instrument')
     opt.add_option('-u', '--uvmax', help='UVMax '
         '[default: %default]', type='float', default=2.0)
     opt.add_option('-s', '--size', help='Cellsize in arcsec'
         '[default: %default]', type='float', default=20)
-    opt.add_option('-n', '--noscreen', help='Make image without screen applied? '
+    opt.add_option('-N', '--noscreen', help='Also make image without screen applied? '
         '[default: %default]', action='store_true', default=False)
     opt.add_option('-m', '--mask', help='Use auto clean mask? '
         '[default: %default]', action='store_true', default=False)
@@ -165,7 +165,7 @@ if __name__=='__main__':
                 "rename/move/delete it, or set the clobber (-c) flag.")
             sys.exit()
         log.info('Concatenating data')
-        msname = concatenate(ms_list, options.outdir)
+        msname = concatenate(ms_list, options.outdir, options.parmdb)
         log.info('Concatenated MS is {0}'.format(msname))
 
         # Define image properties, etc.
