@@ -920,8 +920,11 @@ if __name__=='__main__':
         '[default: %default]', type='float', default='20')
     opt.add_option('-t', '--timecorr', help='Use time-correlated solutions? '
         '[default: %default]', action='store_true', default=False)
-    opt.add_option('-I', '--ionfactor', help='Ionfactor for lowest frequency '
-        '(factor will be scaled with freq) [default: %default]', type='float', default=0.25)
+    opt.add_option('-I', '--ionfactor', help='Ionfactor: sets characteristic time '
+        'scale of time-correlated solve at 60 MHz and 25 km baseline. I.e.: '
+        'FWHM (# of time slots) = 2.35 * ionfactor * sqrt((25e3 / dist)) * (freq / 60e6), '
+        'where dist is the baseline length in meters, and freq is the frequency '
+        'in Hz [default: %default]', type='float', default=0.25)
     opt.add_option('-d', '--dryrun', help='Do a dry run (no calibration is '
         'done) [default: %default]', action='store_true', default=False)
     opt.add_option('-s', '--solint', help='Solution interval to use '
@@ -1140,7 +1143,7 @@ if __name__=='__main__':
             band.solint_amp = 330
             band.time_block = 60 # number of time samples in a block
             band.flag_filler = False # flag filler solutions
-            band.ionfactor = options.ionfactor * band.freq / np.min(freq_list)
+            band.ionfactor = options.ionfactor
             band.ncores_per_cal = 4
             band.do_each_cal_sep = False
             band.scale_solint = options.scale
