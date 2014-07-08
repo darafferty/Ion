@@ -973,7 +973,7 @@ if __name__=='__main__':
     opt.add_option('-p', '--patches', help='Group model into patches (any existing '
         'patches are replaced)? [default: %default]', action='store_true', default=False)
     opt.add_option('-P', '--patchtype', help='Type of grouping to use to make '
-        'patches (tesselate or cluster) [default: %default]', default='tesselate')
+        'patches (tesselate or cluster) [default: %default]', default='tessellate')
     opt.add_option('-x', '--fluxbin', help='Target flux per bin at 60 MHz in '
         'Jy for tesselation [default: %default]', type='float', default=10.0)
     opt.add_option('-N', '--numclusters', help='Number of clusters for clustering '
