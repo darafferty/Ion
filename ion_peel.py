@@ -377,6 +377,14 @@ def peel_band(band):
     peelparset = "{0}/parsets/{1}.peeling.parset".format(band.outdir,
         msname)
 
+    # Perform dir-independent calibration if desired
+    if band.do_dirindep:
+        make_dirindep_parset(dirindep_parset, scalar_phase=band.use_scalar_phase,
+            phase_only=True, sol_int=band.solint_min)
+        subprocess.call("calibrate-stand-alone -f {0} {1} {2} > {3}/logs/"
+            "{4}_peeling_calibrate.log 2>&1".format(msname, dirindep_parset,
+            skymodel, band.outdir, msname), shell=True)
+
     # Make a copy of the MS for peeling and average if desired
     newmsname = "{0}/{1}.peeled".format(band.outdir, msname)
     log.info('Performing averaging and peeling for {0}...\n'
@@ -424,6 +432,56 @@ def peel_band(band):
             time_block=band.time_block, ionfactor=band.ionfactor,
             solint=band.solint_min, flag_filler=band.flag_filler,
             ncores=band.ncores_per_cal)
+
+
+def make_dirindep_parset(parset, scalar_phase=True, phase_only=True, sol_int=1)
+    """Makes a BBS parset for dir-independent calibration"""
+
+    newlines = ['Strategy.InputColumn = DATA\n',
+        'Strategy.ChunkSize = 100\n',
+        'Strategy.Baselines = *&\n',
+        'Strategy.UseSolver = F\n',
+        'Strategy.Steps = [solve, correct]\n',
+        '\n',
+        'Step.solve.Operation = SOLVE\n',
+        'Step.solve.Baselines = [CR]S*&\n',
+        'Step.solve.Model.Sources = []\n',
+        'Step.solve.Model.Cache.Enable = T\n',
+        'Step.solve.Model.Phasors.Enable = T\n',
+        'Step.solve.Model.Gain.Enable = T\n',
+        'Step.solve.Model.CommonScalarPhase.Enable= T\n',
+        'Step.solve.Model.Beam.Enable = T\n',
+        'Step.solve.Model.Beam.Mode = ARRAY_FACTOR\n',
+        'Step.solve.Solve.Mode = COMPLEX\n',
+        'Step.solve.Solve.UVRange = []\n']
+    if scalar_phase:
+        newlines += ['Step.solve.Solve.Parms = ["CommonScalarPhase:*"]\n']
+    else:
+        newlines += ['Step.solve.Solve.Parms = ["Gain:0:0:Phase:*", "Gain:1:1:Phase:*"]\n']
+    newlines += ['Step.solve.Solve.ExclParms = []\n',
+        'Step.solve.Solve.CalibrationGroups = []\n',
+        'Step.solve.Solve.CellSize.Freq = 0\n',
+        'Step.solve.Solve.CellSize.Time = {0}\n'.format(sol_int),
+        'Step.solve.Solve.CellChunkSize = 10\n',
+        'Step.solve.Solve.PropagateSolutions = F\n',
+        'Step.solve.Solve.Options.MaxIter = 200\n',
+        'Step.solve.Solve.Options.EpsValue = 1e-9\n',
+        'Step.solve.Solve.Options.EpsDerivative = 1e-9\n',
+        'Step.solve.Solve.Options.ColFactor = 1e-9\n',
+        'Step.solve.Solve.Options.LMFactor = 1.0\n',
+        'Step.solve.Solve.Options.BalancedEqs = F\n',
+        'Step.solve.Solve.Options.UseSVD = T\n',
+        '\n',
+        'Step.correct.Operation = CORRECT\n',
+        'Step.correct.Model.Sources = []\n',
+        'Step.correct.Model.Phasors.Enable = T\n',
+        'Step.correct.Model.CommonScalarPhase.Enable= T\n',
+        'Step.correct.Model.Gain.Enable  = T\n',
+        'Step.correct.Model.Beam.Enable  = F\n',
+        'Step.correct.Output.Column = CORRECTED_DATA\n']
+    f = open(parset, 'w')
+    f.writelines(newlines)
+    f.close()
 
 
 def make_peeling_parset(parset, peel_bins, scalar_phase=True, phase_only=True,
@@ -615,7 +673,7 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
     log = logging.getLogger("Calib")
 
     if not use_timecorr:
-        subprocess.call("calibrate-stand-alone -f {0} {1} {2} > {3}/logs/"
+        subprocess.call("calibrate-stand-alone {0} {1} {2} > {3}/logs/"
             "{4}_peeling_calibrate.log 2>&1".format(msname, parset, skymodel,
             outdir, logname_root), shell=True)
         subprocess.call("cp -r {0}/instrument {0}/instrument_out".format(msname),
@@ -740,7 +798,7 @@ def calibrate_chunk(chunk_obj):
         ntot=chunk_obj.ntot, trim_start=chunk_obj.trim_start)
 
     # Run bbs
-    subprocess.call("calibrate-stand-alone -f {0} {1} {2} > {3}/logs/"
+    subprocess.call("calibrate-stand-alone {0} {1} {2} > {3}/logs/"
         "{4}_peeling_calibrate_timecorr.log 2>&1".format(chunk_obj.output, chunk_obj.parset,
         chunk_obj.skymodel, chunk_obj.outdir, chunk_obj.logname_root), shell=True)
 
@@ -910,6 +968,8 @@ if __name__=='__main__':
         'to calibrate [default: %default]', type='int', default='8')
     opt.add_option('-v', '--verbose', help='Set verbose output and interactive '
         'mode [default: %default]', action='store_true', default=False)
+    opt.add_option('-D', '--dirindep', help='Perform a dir-independent calibration '
+        'before peeling? [default: %default]', action='store_true', default=False)
     opt.add_option('-p', '--patches', help='Group model into patches (any existing '
         'patches are replaced)? [default: %default]', action='store_true', default=False)
     opt.add_option('-P', '--patchtype', help='Type of grouping to use to make '
@@ -1147,6 +1207,7 @@ if __name__=='__main__':
             band.ncores_per_cal = 4
             band.do_each_cal_sep = False
             band.scale_solint = options.scale
+            band.do_dirindep = options.dirindep
             if band.use_timecorr and (np.remainder(band.time_block, 2) or
                 np.remainder(band.time_block, band.solint_min)):
                 log.warning('For best results, the number of time samples in a '
