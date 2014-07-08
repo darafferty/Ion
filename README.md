@@ -6,7 +6,7 @@ Authors:
 * Bas van der Tol
 
 These scripts, along with the TECFIT and TECSCREEN operations in
-[LoSoTo](https://github.com/revoltek/losoto), allow for semi-automated
+[LoSoTo](https://github.com/revoltek/losoto), allow for the semi-automated
 derivation and application of ionospheric TEC screens for LOFAR data. The
 following scripts are available:
 * __ion_peel.py__: Performs peeling to derive direction-dependent phase solutions
