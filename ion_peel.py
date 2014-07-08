@@ -434,7 +434,7 @@ def peel_band(band):
             ncores=band.ncores_per_cal)
 
 
-def make_dirindep_parset(parset, scalar_phase=True, phase_only=True, sol_int=1)
+def make_dirindep_parset(parset, scalar_phase=True, phase_only=True, sol_int=1):
     """Makes a BBS parset for dir-independent calibration"""
 
     newlines = ['Strategy.InputColumn = DATA\n',
