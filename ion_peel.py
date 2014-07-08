@@ -896,16 +896,13 @@ if __name__=='__main__':
         type='string', default='Peeled')
     opt.add_option('-f', '--fluxcut', help='Minimum apparent flux at 60 MHz in '
         'Jy for calibrators [default: %default]', type='float', default='15.0')
-    opt.add_option('-x', '--fluxbin', help='Target flux per bin at 60 MHz in '
-        'Jy for tesselation [default: %default]', type='float', default='10.0')
     opt.add_option('-g', '--gsm', help='Global sky model BBS file, to use instead '
         'of gsm.py [default: %default]; if given, the RA, Dec and radius '
         'arguments are ignored', type='str', default=None)
     opt.add_option('-m', '--majcut', help='Maximum major axis size in '
         'arcmin for calibrators [default: %default]', type='float', default=None)
     opt.add_option('-b', '--nbands', help='Minimum number of bands that a '
-        'calibrator must have to be used [default: %default]', type='int',
-        default='8')
+        'calibrator must have to be used [default: %default]', type='int', default='8')
     opt.add_option('-a', '--navg', help='Number of frequency channels to '
         'average together before calibration with NDPPP (1 = no averaging) '
         ' [default: %default]', type='int', default='8')
@@ -913,10 +910,18 @@ if __name__=='__main__':
         'to calibrate [default: %default]', type='int', default='8')
     opt.add_option('-v', '--verbose', help='Set verbose output and interactive '
         'mode [default: %default]', action='store_true', default=False)
-    opt.add_option('-p', '--patches', help='Use patches instead of single sources '
-        'for calibrators? [default: %default]', action='store_true', default=False)
+    opt.add_option('-p', '--patches', help='Group model into patches (any existing '
+        'patches are replaced)? [default: %default]', action='store_true', default=False)
+    opt.add_option('-P', '--patchtype', help='Type of grouping to use to make '
+        'patches (tesselate or cluster) [default: %default]', default='tesselate')
+    opt.add_option('-x', '--fluxbin', help='Target flux per bin at 60 MHz in '
+        'Jy for tesselation [default: %default]', type='float', default=10.0)
+    opt.add_option('-N', '--numclusters', help='Number of clusters for clustering '
+        '[default: %default]', type='float', default='20')
     opt.add_option('-t', '--timecorr', help='Use time-correlated solutions? '
         '[default: %default]', action='store_true', default=False)
+    opt.add_option('-I', '--ionfactor', help='Ionfactor for lowest frequency '
+        '(factor will be scaled with freq) [default: %default]', type='float', default=0.25)
     opt.add_option('-d', '--dryrun', help='Do a dry run (no calibration is '
         'done) [default: %default]', action='store_true', default=False)
     opt.add_option('-s', '--solint', help='Solution interval to use '
@@ -988,7 +993,8 @@ if __name__=='__main__':
             log.info('  Tessellating the sky model...')
             patch_skymodel = outdir + '/skymodels/potential_calibrators_patches.skymodel'
             s = lsmtool.load(master_skymodel)
-            s.group('tessellate', targetFlux=options.fluxbin)
+            s.group(options.patchtype, targetFlux=options.fluxbin,
+                numClusters=options.numclusters)
             s.setPatchPositions(method='mid')
             if options.verbose:
                 print('Showing tessellated sky model. Close the plot window to continue.')
@@ -1115,9 +1121,11 @@ if __name__=='__main__':
 
         # Make list of bands to peel and set their options
         band_list = []
+        freq_list = []
         for field in field_list:
             for band in field.bands:
                 band_list.append(band)
+                freq_list.append(band.freq)
         for band in band_list:
             # For each Band instance, set options
             band.master_skymodel = master_skymodel
@@ -1132,7 +1140,7 @@ if __name__=='__main__':
             band.solint_amp = 330
             band.time_block = 60 # number of time samples in a block
             band.flag_filler = False # flag filler solutions
-            band.ionfactor = 0.2
+            band.ionfactor = options.ionfactor * band.freq / np.min(freq_list)
             band.ncores_per_cal = 4
             band.do_each_cal_sep = False
             band.scale_solint = options.scale
