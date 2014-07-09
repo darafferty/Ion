@@ -11,7 +11,7 @@ derivation and application of ionospheric TEC screens for LOFAR data. The
 following scripts are available:
 * __ion_peel.py__: Performs peeling to derive direction-dependent phase solutions
 * __ion_apply.py__: Applies the TEC screens derived by the TECSCREEN operation in LoSoTo
-* __ion_image.py__: Images, with and (optionally) without the TEC screen
+* __ion_image.py__: Images with (and optionally without) the TEC screen
 
 Peeling to Obtain Direction-dependent Phase Solutions (ion_peel.py)
 -------------------------------------------------------------------
@@ -34,7 +34,7 @@ All the measurement sets are assumed to be a single directory (defined by the
 
 For more information on the options, run:
 
-    ion_peeling.py --help
+    ion_peel.py --help
 
 
 Applying a TEC Screen (ion_apply.py)

@@ -163,10 +163,10 @@ if __name__=='__main__':
         elif options.clobber:
             subprocess.call("rm -rf {0}".format(options.outdir), shell=True)
             os.mkdir(options.outdir)
-#         else:
-#             print("The output directory already exists! Please\n"
-#                 "rename/move/delete it, or set the clobber (-c) flag.")
-#             sys.exit()
+        else:
+            print("The output directory already exists! Please\n"
+                "rename/move/delete it, or set the clobber (-c) flag.")
+            sys.exit()
         logfilename = options.outdir + '/ion_image.log'
         init_logger(logfilename, debug=options.verbose)
         log = logging.getLogger("Main")
