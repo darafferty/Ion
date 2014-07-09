@@ -436,7 +436,7 @@ def peel_band(band):
             ncores=band.ncores_per_cal)
 
 
-def make_dirindep_parset(parset, scalar_phase=True, phase_only=True, sol_int=1):
+def make_dirindep_parset(parset, scalar_phase=True, sol_int=1):
     """Makes a BBS parset for dir-independent calibration"""
 
     newlines = ['Strategy.InputColumn = DATA\n',
@@ -455,7 +455,7 @@ def make_dirindep_parset(parset, scalar_phase=True, phase_only=True, sol_int=1):
         'Step.solve.Model.Beam.Enable = T\n',
         'Step.solve.Model.Beam.Mode = ARRAY_FACTOR\n',
         'Step.solve.Solve.Mode = COMPLEX\n',
-        'Step.solve.Solve.UVRange = []\n']
+        'Step.solve.Solve.UVRange = [80]\n']
     if scalar_phase:
         newlines += ['Step.solve.Solve.Parms = ["CommonScalarPhase:*"]\n']
     else:
@@ -465,8 +465,8 @@ def make_dirindep_parset(parset, scalar_phase=True, phase_only=True, sol_int=1):
         'Step.solve.Solve.CellSize.Freq = 0\n',
         'Step.solve.Solve.CellSize.Time = {0}\n'.format(sol_int),
         'Step.solve.Solve.CellChunkSize = 10\n',
-        'Step.solve.Solve.PropagateSolutions = F\n',
-        'Step.solve.Solve.Options.MaxIter = 200\n',
+        'Step.solve.Solve.PropagateSolutions = T\n',
+        'Step.solve.Solve.Options.MaxIter = 150\n',
         'Step.solve.Solve.Options.EpsValue = 1e-9\n',
         'Step.solve.Solve.Options.EpsDerivative = 1e-9\n',
         'Step.solve.Solve.Options.ColFactor = 1e-9\n',
@@ -563,14 +563,14 @@ def make_peeling_parset(parset, peel_bins, scalar_phase=True, phase_only=True,
         newlines += ['Step.solve{0}{1}.Solve.CellSize.Freq = 0\n'.format(pstr, i+1),
             'Step.solve{0}{1}.Solve.CellSize.Time = {2}\n'.format(pstr, i+1, int(peel_bin['sol_int'])),
             'Step.solve{0}{1}.Solve.CellChunkSize = {2}\n'.format(pstr, i+1, int(peel_bin['sol_int'])),
-            'Step.solve{0}{1}.Solve.Options.MaxIter = 50\n'.format(pstr, i+1),
+            'Step.solve{0}{1}.Solve.Options.MaxIter = 150\n'.format(pstr, i+1),
             'Step.solve{0}{1}.Solve.Options.EpsValue = 1e-9\n'.format(pstr, i+1),
             'Step.solve{0}{1}.Solve.Options.EpsDerivative = 1e-9\n'.format(pstr, i+1),
             'Step.solve{0}{1}.Solve.Options.ColFactor = 1e-9\n'.format(pstr, i+1),
             'Step.solve{0}{1}.Solve.Options.LMFactor = 1.0\n'.format(pstr, i+1),
             'Step.solve{0}{1}.Solve.Options.BalancedEqs = F\n'.format(pstr, i+1),
             'Step.solve{0}{1}.Solve.Options.UseSVD = T\n'.format(pstr, i+1),
-            'Step.solve{0}{1}.Solve.UVRange = [250]\n'.format(pstr, i+1)]
+            'Step.solve{0}{1}.Solve.UVRange = [80]\n'.format(pstr, i+1)]
 
         # Ampl-only solve
         if not phase_only and time_block is None:
