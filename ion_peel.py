@@ -382,7 +382,7 @@ def peel_band(band):
         dirindep_parset = '{0}/parsets/{1}.dirindep.parset'.format(
             band.outdir, msname)
         make_dirindep_parset(dirindep_parset, scalar_phase=band.use_scalar_phase,
-            phase_only=True, sol_int=band.solint_min)
+            sol_int=band.solint_min)
         subprocess.call("calibrate-stand-alone -f {0} {1} {2} > {3}/logs/"
             "{4}_peeling_calibrate.log 2>&1".format(msname, dirindep_parset,
             skymodel, band.outdir, msname), shell=True)
