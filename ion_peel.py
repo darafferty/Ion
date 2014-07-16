@@ -384,7 +384,7 @@ def peel_band(band):
         make_dirindep_parset(dirindep_parset, scalar_phase=band.use_scalar_phase,
             sol_int=band.solint_min)
         subprocess.call("calibrate-stand-alone -f {0} {1} {2} > {3}/logs/"
-            "{4}_peeling_calibrate.log 2>&1".format(msname, dirindep_parset,
+            "{4}_dirindep_calibrate.log 2>&1".format(msname, dirindep_parset,
             skymodel, band.outdir, msname), shell=True)
 
     # Make a copy of the MS for peeling and average if desired
@@ -470,7 +470,7 @@ def make_dirindep_parset(parset, scalar_phase=True, sol_int=1):
         'Step.solve.Solve.Options.EpsValue = 1e-9\n',
         'Step.solve.Solve.Options.EpsDerivative = 1e-9\n',
         'Step.solve.Solve.Options.ColFactor = 1e-9\n',
-        'Step.solve.Solve.Options.LMFactor = 1.0\n',
+        'Step.solve.Solve.Options.LMFactor = 1\n',
         'Step.solve.Solve.Options.BalancedEqs = F\n',
         'Step.solve.Solve.Options.UseSVD = T\n',
         '\n',
