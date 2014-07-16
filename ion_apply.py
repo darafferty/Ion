@@ -162,6 +162,8 @@ if __name__=='__main__':
         description=__doc__)
     opt.add_option('-i', '--indir', help='Input directory [default: %default]',
         type='string', default='.')
+    opt.add_option('-o', '--outdir', help='Output directory [default: %default]',
+        type='string', default='.')
     opt.add_option('-p', '--parmdb', help='Name of parmdb instument file to use '
         '[default: %default]', type='string', default='instrument')
     opt.add_option('-t', '--threshold', help='Clipping threshold in Jy '
@@ -203,17 +205,17 @@ if __name__=='__main__':
         log = logging.getLogger("Main")
 
         log.info('Exporting screens...')
-        for ms in ms_list:
+        out_parmdb_list = ['ion_{0}'.format(options.parmdb)] * len(ms_list)
+        for ms, out_parmdb in zip(ms_list, out_parmdb_list):
             # Export screens to parmdbs
             os.system('H5parm_exporter.py {0} {1} -r ion -s {2} -i {3} >> {4} '
                 '2>&1'.format(h5, ms, solset, options.parmdb, logfilename))
-        out_parmdb = 'ion_' + options.parmdb
-        log.info('Screens exported to {0}'.format(out_parmdb))
+            log.info('Screens exported to {0}/{1}'.format(ms, out_parmdb))
 
         # Calibrate
         log.info('Calibrating and applying screens...')
         workers=Pool(processes=min(len(ms_list), options.ncores))
-        workers.map(calibrate, zip(ms_list, out_parmdb))
+        workers.map(calibrate, zip(ms_list, out_parmdb_list))
 
         # Clip high data amplitudes
         H = h5parm(h5)
