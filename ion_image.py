@@ -153,8 +153,10 @@ if __name__=='__main__':
         if len(ms_list) == 0:
             ms_list = sorted(glob.glob(options.indir+"/*.ms.peeled"))
         if len(ms_list) == 0:
+            ms_list = sorted(glob.glob(options.indir+"/*.MS.peeled"))
+        if len(ms_list) == 0:
             print('No measurement sets found in input directory. They must end '
-                'in .MS, .ms, or .ms.peeled')
+                'in .MS, .ms, .ms.peeled, or .MS.peeled')
             sys.exit()
 
         # Concatenate data
