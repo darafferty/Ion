@@ -200,7 +200,7 @@ if __name__=='__main__':
                 'in .MS, .ms, .ms.peeled, .MS.peeled')
             sys.exit()
 
-        logfilename = options.outdir + '/ion_apply.log'
+        logfilename = './ion_apply.log'
         init_logger(logfilename, debug=options.verbose)
         log = logging.getLogger("Main")
 
