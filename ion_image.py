@@ -189,7 +189,7 @@ if __name__=='__main__':
         for imageroot, use_ion in zip(imageroots, use_ions):
             log.info('Calling AWimager to make {0} image...'.format(imageroot))
             if options.mask:
-                from lofar2 import bdsm
+                from lofar import bdsm
                 mask_image = imagedir + '/' + imageroot + '.mask'
                 if not os.path.exists(mask_image):
                     # Mask does not exist, need to make it
