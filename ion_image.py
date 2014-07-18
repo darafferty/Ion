@@ -71,7 +71,6 @@ def concatenate(msnames, outdir, parmdb):
     for msname in msnames:
         pdb = lofar.parmdb.parmdb(msname + "/ion_instrument_out")
         for parmname in pdb.getNames():
-            print parmname
             v = pdb.getValuesGrid(parmname)
             pdb_concat.addValues(v)
 
