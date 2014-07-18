@@ -142,10 +142,12 @@ def makeCorrectParset(outdir):
 
 
 def calibrate(msname_parmdb):
-    msname, parmdb = msname_parmdb
+    msname, parmdb, skymodel = msname_parmdb
     root_dir = '/'.join(msname.split('/')[:-1])
     parset = makeNonDirParset(root_dir)
-    skymodel =
+    if skymodel == '':
+        skymodel = root_dir + '/none'
+        os.system("touch {0}".format(skymodel))
     os.system("calibrate-stand-alone --no-columns --parmdb-name {0} {1} {2} {3} "
             "> {1}_calibrate.log 2>&1".format(parmdb, msname, parset, skymodel))
 
@@ -215,8 +217,9 @@ if __name__=='__main__':
 
         # Calibrate
         log.info('Calibrating and applying screens...')
+        skymodel_list = [options.skymodel] * len(ms_list)
         workers=Pool(processes=min(len(ms_list), options.ncores))
-        workers.map(calibrate, zip(ms_list, out_parmdb_list))
+        workers.map(calibrate, zip(ms_list, out_parmdb_list, skymodel_list))
 
         # Clip high data amplitudes
         H = h5parm(h5)
