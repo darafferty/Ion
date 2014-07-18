@@ -454,6 +454,7 @@ def make_dirindep_parset(parset, scalar_phase=True, sol_int=1):
         'Step.solve.Model.CommonScalarPhase.Enable= T\n',
         'Step.solve.Model.Beam.Enable = T\n',
         'Step.solve.Model.Beam.Mode = ARRAY_FACTOR\n',
+        'Step.solve.Model.Beam.UseChannelFreq = T\n',
         'Step.solve.Solve.Mode = COMPLEX\n',
         'Step.solve.Solve.UVRange = [80]\n']
     if scalar_phase:

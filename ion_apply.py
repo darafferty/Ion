@@ -100,6 +100,7 @@ def makeNonDirParset(outdir):
         'Step.solve.Model.Ionosphere.Type = EXPION\n',
         'Step.solve.Model.Beam.Enable = T\n',
         'Step.solve.Model.Beam.Mode = ARRAY_FACTOR\n',
+        'Step.solve.Model.Beam.UseChannelFreq = T\n',
         'Step.solve.Model.Cache.Enable = T\n',
         'Step.solve.Model.Gain.Enable = T\n',
         'Step.solve.Model.Phasors.Enable = T\n',
@@ -125,6 +126,7 @@ def makeCorrectParset(outdir):
         'Step.correct1.Model.Sources = []\n',
         'Step.correct1.Model.Beam.Enable = T\n',
         'Step.correct1.Model.Beam.Mode = ARRAY_FACTOR\n',
+        'Step.correct1.Model.Beam.UseChannelFreq = T\n',
         'Step.correct1.Model.Gain.Enable = T\n',
         'Step.correct1.Model.Phasors.Enable = T\n',
         'Step.correct1.Output.WriteFlags = F\n',
@@ -148,8 +150,12 @@ def calibrate(msname_parmdb):
     if skymodel == '':
         skymodel = root_dir + '/none'
         os.system("touch {0}".format(skymodel))
-    os.system("calibrate-stand-alone --no-columns --parmdb-name {0} {1} {2} {3} "
-            "> {1}_calibrate.log 2>&1".format(parmdb, msname, parset, skymodel))
+        replace_sourcedb = ''
+    else:
+        replace_sourcedb = '--replace-sourcedb'
+    os.system("calibrate-stand-alone --no-columns {0} --parmdb-name {1} {2} {3} {4} "
+            "> {2}_calibrate.log 2>&1".format(replace_sourcedb, parmdb, msname,
+            parset, skymodel))
 
     parset = makeCorrectParset(root_dir)
     skymodel = root_dir + '/none'
