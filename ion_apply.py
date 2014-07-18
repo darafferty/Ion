@@ -145,13 +145,13 @@ def calibrate(msname_parmdb):
     msname, parmdb = msname_parmdb
     root_dir = '/'.join(msname.split('/')[:-1])
     parset = makeNonDirParset(root_dir)
-    skymodel = root_dir + '/none'
-    os.system("touch {0}".format(skymodel))
-
+    skymodel =
     os.system("calibrate-stand-alone --no-columns --parmdb-name {0} {1} {2} {3} "
             "> {1}_calibrate.log 2>&1".format(parmdb, msname, parset, skymodel))
 
     parset = makeCorrectParset(root_dir)
+    skymodel = root_dir + '/none'
+    os.system("touch {0}".format(skymodel))
     os.system("calibrate-stand-alone --no-columns --parmdb-name {0} {1} {2} {3} "
             "> {1}_apply.log 2>&1".format(parmdb, msname, parset, skymodel))
 
@@ -162,10 +162,11 @@ if __name__=='__main__':
         description=__doc__)
     opt.add_option('-i', '--indir', help='Input directory [default: %default]',
         type='string', default='.')
-    opt.add_option('-o', '--outdir', help='Output directory [default: %default]',
-        type='string', default='.')
     opt.add_option('-p', '--parmdb', help='Name of parmdb instument file to use '
         '[default: %default]', type='string', default='instrument')
+    opt.add_option('-s', '--skymodel', help='Name of sky model file to use. If no '
+        'file is given, the model is taken from the MODEL_DATA column '
+        '[default: %default]', type='string', default='')
     opt.add_option('-t', '--threshold', help='Clipping threshold in Jy '
         '[default: %default]', type='float', default=700.0)
     opt.add_option('-n', '--ncores', help='Maximum number of simultaneous '
@@ -200,7 +201,7 @@ if __name__=='__main__':
                 'in .MS, .ms, .ms.peeled, .MS.peeled')
             sys.exit()
 
-        logfilename = './ion_apply.log'
+        logfilename = options.indir + '/ion_apply.log'
         init_logger(logfilename, debug=options.verbose)
         log = logging.getLogger("Main")
 
