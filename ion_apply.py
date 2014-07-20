@@ -153,7 +153,7 @@ def calibrate(msname_parmdb):
         replace_sourcedb = ''
     else:
         replace_sourcedb = '--replace-sourcedb'
-    os.system("calibrate-stand-alone --no-columns {0} --parmdb-name {1} {2} {3} {4} "
+    os.system("calibrate-stand-alone {0} --parmdb-name {1} {2} {3} {4} "
             "> {2}_calibrate.log 2>&1".format(replace_sourcedb, parmdb, msname,
             parset, skymodel))
 
