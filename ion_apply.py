@@ -102,10 +102,11 @@ def makeNonDirParset(outdir):
         'Step.solve.Model.Beam.Mode = ARRAY_FACTOR\n',
         'Step.solve.Model.Beam.UseChannelFreq = T\n',
         'Step.solve.Model.Cache.Enable = T\n',
+        'Step.solve.Model.Gain.Enable = F\n',
         'Step.solve.Model.CommonScalarPhase.Enable= T\n',
         'Step.solve.Solve.Mode = COMPLEX\n',
-        'Step.solve.Solve.UVRange = [80]\n']
-        'Step.solve.Solve.Parms = ["CommonScalarPhase:*"]\n'
+        'Step.solve.Solve.UVRange = [80]\n',
+        'Step.solve.Solve.Parms = ["CommonScalarPhase:*"]\n',
         'Step.solve.Solve.CellSize.Freq = 10\n',
         'Step.solve.Solve.CellSize.Time = 5\n',
         'Step.solve.Solve.CellChunkSize = 1\n',
@@ -128,6 +129,7 @@ def makeCorrectParset(outdir):
         'Step.correct1.Model.Beam.Enable = T\n',
         'Step.correct1.Model.Beam.Mode = ARRAY_FACTOR\n',
         'Step.correct1.Model.Beam.UseChannelFreq = T\n',
+        'Step.correct1.Model.Gain.Enable = F\n',
         'Step.correct1.Model.CommonScalarPhase.Enable = T\n',
         'Step.correct1.Output.WriteFlags = F\n',
         'Step.correct2.Operation = CORRECT\n',
