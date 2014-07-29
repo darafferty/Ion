@@ -132,8 +132,10 @@ if __name__=='__main__':
         '[default: %default]', type='float', default=20)
     opt.add_option('-N', '--noscreen', help='Also make image without screen applied? '
         '[default: %default]', action='store_true', default=False)
-    opt.add_option('-m', '--mask', help='Use auto clean mask? '
+    opt.add_option('-m', '--automask', help='Use auto clean mask? '
         '[default: %default]', action='store_true', default=False)
+    opt.add_option('-M', '--maskfile', help='CASA clean-mask image '
+        '[default: %default]', type='string', default='')
     opt.add_option('-I', '--iter', help='Number of iterations of image/masking to do '
         '[default: %default]', type='int', default=5)
     opt.add_option('-v', '--verbose', help='Set verbose output and interactive '
@@ -187,7 +189,7 @@ if __name__=='__main__':
 
         for imageroot, use_ion in zip(imageroots, use_ions):
             log.info('Calling AWimager to make {0} image...'.format(imageroot))
-            if options.mask:
+            if options.automask:
                 from lofar import bdsm
                 mask_image = imagedir + '/' + imageroot + '.mask'
                 if not os.path.exists(mask_image):
@@ -204,6 +206,11 @@ if __name__=='__main__':
                             img_format='casa', mask_dilation=2, clobber=True)
                         img.export_image(outfile=mask_image+str(i), img_type='island_mask',
                             img_format='casa', mask_dilation=2, clobber=True)
+                awimager(msname, imageroot, UVmax, options.size, options.npix,
+                    options.threshold, mask_image=mask_image, use_ion=use_ion,
+                    imagedir=imagedir, logfilename=logfilename, clobber=True)
+            elif options.maskfile != '':
+                mask_image = options.maskfile
                 awimager(msname, imageroot, UVmax, options.size, options.npix,
                     options.threshold, mask_image=mask_image, use_ion=use_ion,
                     imagedir=imagedir, logfilename=logfilename, clobber=True)
