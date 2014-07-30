@@ -219,7 +219,7 @@ if __name__=='__main__':
                     niter=options.iter)
             else:
                 awimager(msname, imageroot, UVmax, options.size, options.npix,
-                    options.threshold, clobber=options.clobber, use_ion=use_ion,
+                    options.threshold, use_ion=use_ion,
                     imagedir=imagedir, logfilename=logfilename, clobber=True,
                     niter=options.iter)
 
