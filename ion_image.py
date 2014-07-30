@@ -132,12 +132,12 @@ if __name__=='__main__':
         '[default: %default]', type='float', default=20)
     opt.add_option('-N', '--noscreen', help='Also make image without screen applied? '
         '[default: %default]', action='store_true', default=False)
-    opt.add_option('-m', '--automask', help='Use auto clean mask? '
-        '[default: %default]', action='store_true', default=False)
-    opt.add_option('-M', '--maskfile', help='CASA clean-mask image '
+    opt.add_option('-a', '--automask', help='Auto clean mask iterations; 0 => no auto masking '
+        '[default: %default]', type='int', default=0)
+    opt.add_option('-m', '--maskfile', help='CASA clean-mask image '
         '[default: %default]', type='string', default='')
-    opt.add_option('-I', '--iter', help='Number of iterations of image/masking to do '
-        '[default: %default]', type='int', default=5)
+    opt.add_option('-I', '--iter', help='Number of iterations to do '
+        '[default: %default]', type='int', default=100000)
     opt.add_option('-v', '--verbose', help='Set verbose output and interactive '
         'mode [default: %default]', action='store_true', default=False)
     opt.add_option('-c', '--clobber', help='Clobber existing output files? '
@@ -189,12 +189,12 @@ if __name__=='__main__':
 
         for imageroot, use_ion in zip(imageroots, use_ions):
             log.info('Calling AWimager to make {0} image...'.format(imageroot))
-            if options.automask:
+            if options.automask > 0:
                 from lofar import bdsm
                 mask_image = imagedir + '/' + imageroot + '.mask'
                 if not os.path.exists(mask_image):
                     # Mask does not exist, need to make it
-                    log.info('Generating mask "{0}"...'.format(mask_image))
+                    log.info('Generating clean mask "{0}"...'.format(mask_image))
                     for i in range(options.iter):
                         awimager(msname, imageroot, UVmax, options.size, options.npix,
                             options.threshold, clobber=options.clobber, use_ion=use_ion,
@@ -208,15 +208,19 @@ if __name__=='__main__':
                             img_format='casa', mask_dilation=2, clobber=True)
                 awimager(msname, imageroot, UVmax, options.size, options.npix,
                     options.threshold, mask_image=mask_image, use_ion=use_ion,
-                    imagedir=imagedir, logfilename=logfilename, clobber=True)
+                    imagedir=imagedir, logfilename=logfilename, clobber=True,
+                    niter=options.iter)
             elif options.maskfile != '':
                 mask_image = options.maskfile
+                log.info('Using clean mask "{0}"...'.format(mask_image))
                 awimager(msname, imageroot, UVmax, options.size, options.npix,
                     options.threshold, mask_image=mask_image, use_ion=use_ion,
-                    imagedir=imagedir, logfilename=logfilename, clobber=True)
+                    imagedir=imagedir, logfilename=logfilename, clobber=True,
+                    niter=options.iter)
             else:
                 awimager(msname, imageroot, UVmax, options.size, options.npix,
                     options.threshold, clobber=options.clobber, use_ion=use_ion,
-                    imagedir=imagedir, logfilename=logfilename)
+                    imagedir=imagedir, logfilename=logfilename, clobber=True,
+                    niter=options.iter)
 
         log.info('Imaging complete.')
