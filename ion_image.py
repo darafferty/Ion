@@ -177,7 +177,7 @@ def awimager(msname, imageroot, UVmax, cellsize, npix, threshold, mask_image=Non
     threshold = '{0}Jy'.format(threshold)
 
     callStr = 'awimager ms=%s data=CORRECTED_DATA image=%s/%s '\
-        'operation=mfclark niter=%s UVmax=%f cellsize=%sarcsec npix=%s '\
+        'operation=mfclark niter=%s UVmax=%f cellsize=%s npix=%s '\
         'threshold=%s weight=briggs robust=%f '\
         % (msname, imagedir, imageroot, niter, UVmax, cellsize, npix, threshold, robust)
     if logfilename is not None:
