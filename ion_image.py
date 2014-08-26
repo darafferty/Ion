@@ -89,7 +89,7 @@ def createMask(msfile, skymodel, npix, cellsize, filename=None, logfilename=None
         mask_file = "{0}_{1}pix_{2}cellsize.mask".format(skymodel, npix, cellsize)
     else:
         mask_file = filename
-    mask_command = "awimager ms={0} image={1} operation=empty stokes='I' "\
+    mask_command = "awimager ms={0} image={1} operation=empty "\
         "npix={2} cellsize={3}".format(msfile, mask_file, npix, cellsize)
     print(mask_command)
     if logfilename is not None:
