@@ -91,7 +91,6 @@ def createMask(msfile, skymodel, npix, cellsize, filename=None, logfilename=None
         mask_file = filename
     mask_command = "awimager ms={0} image={1} operation=empty stokes='I' "\
         "npix={2} cellsize={3}arcsec".format(msfile, mask_file, npix, cellsize)
-    print(mask_command)
     if logfilename is not None:
         mask_command += '>> {0} 2>&1 '.format(logfilename)
 
@@ -155,7 +154,6 @@ def createMask(msfile, skymodel, npix, cellsize, filename=None, logfilename=None
                     mask_data[0, 0, y, x] = 1
 
     mask.putdata(mask_data)
-    table.close()
     return mask_file
 
 
@@ -271,7 +269,6 @@ if __name__=='__main__':
         UVmax = options.uvmax
 
         for imageroot, use_ion in zip(imageroots, use_ions):
-            log.info('Calling AWimager to make {0} image...'.format(imageroot))
             if options.automask > 0:
                 from lofar import bdsm
                 mask_image = imagedir + '/' + imageroot + '.mask'
@@ -289,6 +286,7 @@ if __name__=='__main__':
                             img_format='casa', mask_dilation=2, clobber=True)
                         img.export_image(outfile=mask_image+str(i), img_type='island_mask',
                             img_format='casa', mask_dilation=2, clobber=True)
+                log.info('Calling AWimager to make {0} image...'.format(imageroot))
                 awimager(msname, imageroot, UVmax, options.size, options.npix,
                     options.threshold, mask_image=mask_image, use_ion=use_ion,
                     imagedir=imagedir, logfilename=logfilename, clobber=True,
@@ -298,6 +296,7 @@ if __name__=='__main__':
                     mask_image = options.maskfile
                 elif os.path.exists(options.maskfile):
                     mask_image = imagedir + '/' + imageroot + '.mask'
+                    log.info('Generating clean mask "{0}"...'.format(mask_image))
                     mask_image = createMask(msname, options.maskfile, options.npix,
                         options.size, filename=mask_image, logfilename=logfilename)
                 else:
@@ -306,11 +305,13 @@ if __name__=='__main__':
                     sys.exit()
 
                 log.info('Using clean mask "{0}"...'.format(mask_image))
+                log.info('Calling AWimager to make {0} image...'.format(imageroot))
                 awimager(msname, imageroot, UVmax, options.size, options.npix,
                     options.threshold, mask_image=mask_image, use_ion=use_ion,
                     imagedir=imagedir, logfilename=logfilename, clobber=True,
                     niter=options.iter)
             else:
+                log.info('Calling AWimager to make {0} image...'.format(imageroot))
                 awimager(msname, imageroot, UVmax, options.size, options.npix,
                     options.threshold, use_ion=use_ion,
                     imagedir=imagedir, logfilename=logfilename, clobber=True,
