@@ -75,7 +75,7 @@ def concatenate(msnames, outdir, parmdb):
     return concat_msname
 
 
-def createMask(msfile, skymodel, npix, cellsize, filename=None):
+def createMask(msfile, skymodel, npix, cellsize, filename=None, logfilename=None):
     """Creates a CASA mask from an input sky model"""
     import lsmtool
     import pyrap.images as pi
@@ -91,7 +91,11 @@ def createMask(msfile, skymodel, npix, cellsize, filename=None):
         mask_file = filename
     mask_command = "awimager ms={0} image={1} operation=empty stokes='I' "\
         "npix={2} cellsize={3}".format(msfile, mask_file, npix, cellsize)
-    subprocess.call(mask_command+" > /dev/null 2>&1", shell=True)
+    print(mask_command)
+    if logfilename is not None:
+        mask_command += '>> {0} 2>&1 '.format(logfilename)
+
+    subprocess.call(mask_command, shell=True)
     catalogue = skymodel
 
     # Open mask
@@ -295,7 +299,7 @@ if __name__=='__main__':
                 elif os.path.exists(options.maskfile):
                     mask_image = imagedir + '/' + imageroot + '.mask'
                     mask_image = createMask(msname, options.maskfile, options.npix,
-                        options.size, filename=mask_image)
+                        options.size, filename=mask_image, logfilename=logfilename)
                 else:
                     print('The specified mask file "{0}" was not found.'.format(
                         options.maskfile))
