@@ -89,8 +89,8 @@ def createMask(msfile, skymodel, npix, cellsize, filename=None, logfilename=None
         mask_file = "{0}_{1}pix_{2}cellsize.mask".format(skymodel, npix, cellsize)
     else:
         mask_file = filename
-    mask_command = "awimager ms={0} image={1} operation=empty "\
-        "npix={2} cellsize={3}".format(msfile, mask_file, npix, cellsize)
+    mask_command = "awimager ms={0} image={1} operation=empty stokes='I' "\
+        "npix={2} cellsize={3}arcsec".format(msfile, mask_file, npix, cellsize)
     print(mask_command)
     if logfilename is not None:
         mask_command += '>> {0} 2>&1 '.format(logfilename)
@@ -179,7 +179,7 @@ def awimager(msname, imageroot, UVmax, cellsize, npix, threshold, mask_image=Non
     threshold = '{0}Jy'.format(threshold)
 
     callStr = 'awimager ms=%s data=CORRECTED_DATA image=%s/%s '\
-        'operation=mfclark niter=%s UVmax=%f cellsize=%s npix=%s '\
+        'operation=mfclark niter=%s UVmax=%f cellsize=%sarcsec npix=%s '\
         'threshold=%s weight=briggs robust=%f '\
         % (msname, imagedir, imageroot, niter, UVmax, cellsize, npix, threshold, robust)
     if logfilename is not None:
