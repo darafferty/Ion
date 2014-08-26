@@ -90,7 +90,7 @@ def createMask(msfile, skymodel, npix, cellsize, filename=None):
     else:
         mask_file = filename
     mask_command = "awimager ms={0} image={1} operation=empty stokes='I' "\
-        "npix={0} cellsize={1}".format(msfile, mask_file, npix, cellsize)
+        "npix={2} cellsize={3}".format(msfile, mask_file, npix, cellsize)
     subprocess.call(mask_command+" > /dev/null 2>&1", shell=True)
     catalogue = skymodel
 
