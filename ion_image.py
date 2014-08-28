@@ -55,7 +55,7 @@ class MultiLineFormatter(logging.Formatter):
 
 def concatenate(msnames, outdir, parmdb):
     """Concatenates all MSes and returns name of concated MS"""
-    concat_msname = outdir + "/concatenated.MS"
+    concat_msname = outdir + "/to_image.ms"
 
     for msname in msnames:
         os.system("addImagingColumns.py %s" % msname)
@@ -255,9 +255,9 @@ if __name__=='__main__':
         init_logger(logfilename, debug=options.verbose)
         log = logging.getLogger("Main")
         log.info('Imaging the following data: {0}'.format(ms_list))
-        log.info('Concatenating data...')
+        log.info('Copying and concatenating data (if needed)...')
         msname = concatenate(ms_list, options.outdir, options.parmdb)
-        log.info('Concatenated MS is {0}'.format(msname))
+        log.info('MS to be imaged is {0}'.format(msname))
 
         # Define image properties, etc.
         imagedir = options.outdir
