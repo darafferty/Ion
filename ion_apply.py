@@ -287,6 +287,10 @@ if __name__=='__main__':
         '[default: %default]', type='string', default='')
     opt.add_option('-b', '--bbs', help='Use BBS for dir-independent '
         'calibration [default: %default]', action='store_true', default=False)
+    opt.add_option('-e', '--skipexport', help='Skip export of screen from H5parm '
+        '[default: %default]', action='store_true', default=False)
+    opt.add_option('-C', '--skipclip', help='Skip clipping on CORRECTED_DATA amplitudes '
+        '[default: %default]', action='store_true', default=False)
     opt.add_option('-t', '--threshold', help='Clipping threshold in Jy '
         '[default: %default]', type='float', default=700.0)
     opt.add_option('-n', '--ncores', help='Maximum number of simultaneous '
@@ -325,13 +329,14 @@ if __name__=='__main__':
         init_logger(logfilename, debug=options.verbose)
         log = logging.getLogger("Main")
 
-        log.info('Exporting screens...')
-        out_parmdb_list = ['ion_{0}'.format(options.parmdb)] * len(ms_list)
-        for ms, out_parmdb in zip(ms_list, out_parmdb_list):
-            # Export screens to parmdbs
-            os.system('H5parm_exporter.py {0} {1} -c -r ion -s {2} -i {3} >> {4} '
-                '2>&1'.format(h5, ms, solset, options.parmdb, logfilename))
-            log.info('Screens exported to {0}/{1}'.format(ms, out_parmdb))
+        if not options.skipexport:
+            log.info('Exporting screens...')
+            out_parmdb_list = ['ion_{0}'.format(options.parmdb)] * len(ms_list)
+            for ms, out_parmdb in zip(ms_list, out_parmdb_list):
+                # Export screens to parmdbs
+                os.system('H5parm_exporter.py {0} {1} -c -r ion -s {2} -i {3} >> {4} '
+                    '2>&1'.format(h5, ms, solset, options.parmdb, logfilename))
+                log.info('Screens exported to {0}/{1}'.format(ms, out_parmdb))
 
         # Calibrate
         log.info('Calibrating and applying screens...')
@@ -345,10 +350,11 @@ if __name__=='__main__':
         workers.map(applyNoTEC, zip(ms_list, out_parmdb_list, skymodel_list))
 
         # Clip high data amplitudes
-        H = h5parm(h5)
-        station_selection = H.getAnt(solset).keys()
-        log.info('Clipping CORRECTED_DATA amplitudes at {0} Jy...'.format(options.threshold))
-        clip(ms_list, station_selection, threshold=options.threshold)
+        if not options.skipclip:
+            H = h5parm(h5)
+            station_selection = H.getAnt(solset).keys()
+            log.info('Clipping CORRECTED_DATA amplitudes at {0} Jy...'.format(options.threshold))
+            clip(ms_list, station_selection, threshold=options.threshold)
 
         log.info('TEC screen application complete.')
 
