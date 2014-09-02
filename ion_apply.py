@@ -267,6 +267,9 @@ def applyTEC(msname_parmdb):
 
 def applyNoTEC(msname_parmdb):
     """Applies beam at phase center to CORRECTED_DATA_NOTEC"""
+    msname, parmdb, skymodel = msname_parmdb
+    root_dir = '/'.join(msname.split('/')[:-1])
+
     parset = makeCorrectParset(root_dir, noTEC=True)
     skymodel = root_dir + '/none'
     os.system("touch {0}".format(skymodel))
