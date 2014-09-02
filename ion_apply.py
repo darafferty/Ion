@@ -134,7 +134,7 @@ def makePredictParset(outdir):
         'Step.predict.Model.Beam.UseChannelFreq = T\n',
         'Step.predict.Model.Cache.Enable = T\n',
         'Step.predict.Output.Column = MODEL_DATA_TEC\n']
-    parset = outdir + '/bbs_nondir.parset'
+    parset = outdir + '/bbs_predict.parset'
     f = open(parset, 'w')
     f.writelines(newlines)
     f.close()
@@ -244,7 +244,7 @@ def calibrateNDPPP(msname_parmdb):
     else:
         replace_sourcedb = '--replace-sourcedb'
     os.system("calibrate-stand-alone {0} --parmdb-name {1} {2} {3} {4} "
-            "> {2}_calibrate.log 2>&1".format(replace_sourcedb, parmdb, msname,
+            "> {2}_predict.log 2>&1".format(replace_sourcedb, parmdb, msname,
             parset, skymodel))
 
     # Do dir-independent calibration with TEC screen included
@@ -340,12 +340,13 @@ if __name__=='__main__':
                 os.system('H5parm_exporter.py {0} {1} -c -r ion -s {2} -i {3} >> {4} '
                     '2>&1'.format(h5, ms, solset, options.parmdb, logfilename))
                 log.info('Screens exported to {0}/{1}'.format(ms, out_parmdb))
-        out_parmdb_list = ['{0}'.format(options.parmdb)] * len(ms_list)
+        else:
+            out_parmdb_list = ['{0}'.format(options.parmdb)] * len(ms_list)
 
         # Calibrate
         log.info('Calibrating and applying screens...')
         skymodel_list = [options.skymodel] * len(ms_list)
-        workers=Pool(processes=min(len(ms_list), options.ncores))
+        workers = Pool(processes=min(len(ms_list), options.ncores))
         if options.bbs:
             workers.map(calibrateBBS, zip(ms_list, out_parmdb_list, skymodel_list))
         else:
