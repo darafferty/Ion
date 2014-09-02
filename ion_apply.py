@@ -179,7 +179,7 @@ def makeCorrectParset(outdir, noTEC=False):
         newlines += ['Strategy.Steps = [correct1]\n']
     else:
         newlines += ['Strategy.Steps = [correct1, correct2]\n']
-   newlines += ['Step.correct1.Operation = CORRECT\n',
+    newlines += ['Step.correct1.Operation = CORRECT\n',
         'Step.correct1.Model.Sources = []\n',
         'Step.correct1.Model.Beam.Enable = T\n',
         'Step.correct1.Model.Beam.Mode = ARRAY_FACTOR\n',
