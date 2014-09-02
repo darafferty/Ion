@@ -186,6 +186,8 @@ def awimager(msname, imageroot, UVmax, cellsize, npix, threshold, mask_image=Non
     if use_ion:
         callStr += 'applyIonosphere=1 timewindow=10 SpheSupport=45 parmdbname=%s '\
             % (parmdbname)
+    else:
+        callStr += 'data=CORRECTED_DATA_NOTEC '
     if mask_image is not None:
         callStr += 'mask=%s' % mask_image
 
