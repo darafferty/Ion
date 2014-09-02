@@ -329,9 +329,9 @@ if __name__=='__main__':
         init_logger(logfilename, debug=options.verbose)
         log = logging.getLogger("Main")
 
+        out_parmdb_list = ['ion_{0}'.format(options.parmdb)] * len(ms_list)
         if not options.skipexport:
             log.info('Exporting screens...')
-            out_parmdb_list = ['ion_{0}'.format(options.parmdb)] * len(ms_list)
             for ms, out_parmdb in zip(ms_list, out_parmdb_list):
                 # Export screens to parmdbs
                 os.system('H5parm_exporter.py {0} {1} -c -r ion -s {2} -i {3} >> {4} '
