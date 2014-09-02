@@ -133,7 +133,7 @@ def makePredictParset(outdir):
         'Step.predict.Model.Beam.Mode = ARRAY_FACTOR\n',
         'Step.predict.Model.Beam.UseChannelFreq = T\n',
         'Step.predict.Model.Cache.Enable = T\n',
-        'Step.predict.Output.Column = MODEL_DATA_TEC\n',
+        'Step.predict.Output.Column = MODEL_DATA_TEC\n']
     parset = outdir + '/bbs_nondir.parset'
     f = open(parset, 'w')
     f.writelines(newlines)
