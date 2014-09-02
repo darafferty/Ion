@@ -255,8 +255,7 @@ def find_calibrators(master_skymodel, beamMS, flux_cut_Jy=15.0,
             sizes = s.getPatchSizes(units='arcsec', weight=True, applyBeam=True)
         else:
             sizes = s.getColValues('MajorAxis', units='arcsec')
-        indices = np.where(sizes <= maj_cut_arcsec)[0]
-        s.select(indices, force=True, aggregate=True)
+        s.select(sizes <= maj_cut_arcsec, force=True, aggregate=True)
         if len(s) == 0:
             return [], [], []
 
