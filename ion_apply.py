@@ -332,14 +332,15 @@ if __name__=='__main__':
         init_logger(logfilename, debug=options.verbose)
         log = logging.getLogger("Main")
 
-        out_parmdb_list = ['ion_{0}'.format(options.parmdb)] * len(ms_list)
         if not options.skipexport:
+            out_parmdb_list = ['ion_{0}'.format(options.parmdb)] * len(ms_list)
             log.info('Exporting screens...')
             for ms, out_parmdb in zip(ms_list, out_parmdb_list):
                 # Export screens to parmdbs
                 os.system('H5parm_exporter.py {0} {1} -c -r ion -s {2} -i {3} >> {4} '
                     '2>&1'.format(h5, ms, solset, options.parmdb, logfilename))
                 log.info('Screens exported to {0}/{1}'.format(ms, out_parmdb))
+        out_parmdb_list = ['{0}'.format(options.parmdb)] * len(ms_list)
 
         # Calibrate
         log.info('Calibrating and applying screens...')
