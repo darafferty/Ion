@@ -141,7 +141,7 @@ def makePredictParset(outdir):
     return parset
 
 
-makeGainCalParset(msname, parmdb):
+def makeGainCalParset(msname, parmdb):
     """Makes an NDPPP parset to perform a dir-independent calibration using
     the MODEL_DATA_TEC column"""
     outdir = '/'.join(msname.split('/')[:-1])
