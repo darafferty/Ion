@@ -236,7 +236,7 @@ def calibrateNDPPP(msname_parmdb):
     root_dir = '/'.join(msname.split('/')[:-1])
 
     # Do a predict in BBS with TEC screen included
-    parset = makePredictParset(msname)
+    parset = makePredictParset(root_dir)
     if skymodel == '':
         skymodel = root_dir + '/none'
         os.system("touch {0}".format(skymodel))
