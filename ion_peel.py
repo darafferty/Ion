@@ -391,7 +391,7 @@ def peel_band(band):
     log.info('Performing averaging and peeling for {0}...\n'
         '      Phase-only calibration: {4}\n'
         '      See the following logs for details:\n'
-        '      - {3}/logs/ndppp_peeling_shift_{1}.log\n'
+        '      - {3}/logs/ndppp_avg_{1}.log\n'
         '      - {3}/logs/{2}_peeling_calibrate.log'.format(band.file, msname,
         msname, band.outdir, band.phase_only))
     f = open(p_shiftname, 'w')
@@ -404,7 +404,7 @@ def peel_band(band):
         "avg.type = average\n"
         "avg.freqstep = {2}".format(band.file, newmsname, band.navg))
     f.close()
-    subprocess.call("NDPPP {0} > {1}/logs/ndppp_peeling_shift_{2}.log 2>&1".format(p_shiftname,
+    subprocess.call("NDPPP {0} > {1}/logs/ndppp_avg_{2}.log 2>&1".format(p_shiftname,
         band.outdir, msname), shell=True)
 
     # Perform the peeling. Do this step even if time-correlated solutions
@@ -617,7 +617,7 @@ def make_peeling_parset(parset, peel_bins, scalar_phase=True, phase_only=True,
     f.close()
 
 
-def write_sols(field_list, h5file):
+def write_sols(field_list, h5file, flag_outliers=True):
     """Collects all solutions and writes them to an H5parm file"""
     log = logging.getLogger("Writer")
     log.info('Collecting all solutions in H5parm file {0}'.format(h5file))
@@ -652,6 +652,12 @@ def write_sols(field_list, h5file):
             subprocess.call("H5parm_importer.py {0} {1} --solset={2} -i {3}".format(peeled_ms_h5file,
                 ms_file, peeled_ms_solset, instrumentdb), shell=True)
 
+            # Run LoSoTo to flag outliers in the phases
+            if flag_outliers:
+                parset = makeFlagParset(peeled_ms_h5file, peeled_ms_solset)
+                subprocess.call("losoto.py {0} {1}".format(peeled_ms_h5file,
+                    parset), shell=True)
+
             # Use LoSoTo's h5parm_merge.py to merge the H5parm files into the
             # master H5parm file.
             if create_master:
@@ -668,6 +674,27 @@ def write_sols(field_list, h5file):
                         h5file, ms_solset), shell=True)
                 subprocess.call("H5parm_merge.py {0}:{1} {2}:{3}".format(peeled_ms_h5file,
                     peeled_ms_solset, h5file, peeled_ms_solset), shell=True)
+
+
+def makeFlagParset(h5file, solset):
+    """Runs LoSoTo to flag outliers"""
+    parset = '{0}.losoto_flag.parset'.format(h5file)
+    newlines = [
+        'LoSoTo.Steps = [flag]\n',
+        'LoSoTo.Solset = [{0}]\n'.format(solset),
+        'LoSoTo.Soltab = [sol000/phase000]\n',
+        'LoSoTo.Steps.flag.Operation = FLAG\n',
+        'LoSoTo.Steps.flag.Axis = time\n',
+        'LoSoTo.Steps.flag.MaxCycles = 5\n',
+        'LoSoTo.Steps.flag.MaxRms = 5.\n',
+        'LoSoTo.Steps.flag.Window = 100\n',
+        'LoSoTo.Steps.flag.Order = 2\n',
+        'LoSoTo.Steps.flag.MaxGap = 300\n'
+        'LoSoTo.Steps.flag.Replace = True\n']
+    f = open(parset, 'w')
+    f.writelines(newlines)
+    f.close()
+    return parset
 
 
 def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
@@ -996,6 +1023,8 @@ if __name__=='__main__':
         type='float', default='5')
     opt.add_option('-S', '--scale', help='Scale solution interval as '
         'solint*(fluxMax/flux)^2 [default: %default]', action='store_true', default=False)
+    opt.add_option('-F', '--flag', help='Flag outliers in peeling solutions? '
+        '[default: %default]', action='store_true', default=False)
     opt.add_option('-c', '--clobber', help='Clobber existing output files? '
         '[default: %default]', action='store_true', default=False)
     (options, args) = opt.parse_args()
@@ -1237,7 +1266,7 @@ if __name__=='__main__':
             pool.join()
 
             # Write all the solutions to an H5parm file for later use in LoSoTo.
-            write_sols(field_list, outdir+'/'+outfile)
+            write_sols(field_list, outdir+'/'+outfile, flag_outliers=options.flag)
             log.info('Peeling complete.')
         else:
             log.info('Dry-run flag (-d) was set. No peeling done.')

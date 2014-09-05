@@ -344,13 +344,14 @@ if __name__=='__main__':
             out_parmdb_list = ['{0}'.format(options.parmdb)] * len(ms_list)
 
         # Calibrate
-        log.info('Calibrating and applying screens...')
+        log.info('Performing calibration with screens included...')
         skymodel_list = [options.skymodel] * len(ms_list)
         workers = Pool(processes=min(len(ms_list), options.ncores))
         if options.bbs:
             workers.map(calibrateBBS, zip(ms_list, out_parmdb_list, skymodel_list))
         else:
             workers.map(calibrateNDPPP, zip(ms_list, out_parmdb_list, skymodel_list))
+        log.info('Correcting data at phase center for gain, beam, and screens...')
         workers.map(applyTEC, zip(ms_list, out_parmdb_list, skymodel_list))
         workers.map(applyNoTEC, zip(ms_list, out_parmdb_list, skymodel_list))
 
