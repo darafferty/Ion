@@ -188,7 +188,7 @@ def awimager(msname, imageroot, UVmax, cellsize, npix, threshold, mask_image=Non
             % (parmdbname)
     else:
         parset = imagedir+'/NDPPP_copy.parset'
-        f = open(, 'w')
+        f = open(parset, 'w')
         f.write("msin={0}\n"
             "msin.datacolumn=CORRECTED_DATA_NOTEC\n"
             "msout={1}\n"
