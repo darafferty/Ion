@@ -53,9 +53,9 @@ class MultiLineFormatter(logging.Formatter):
         return str
 
 
-def concatenate(msnames, outdir, parmdb):
-    """Concatenates all MSes and returns name of concated MS"""
-    concat_msname = outdir + "/to_image.ms"
+def concatenate(msnames, outdir, parmdb, noscreen=False):
+    """Copies and concatenates the input MSes"""
+    concat_msname = outdir + "/concat.ms"
 
     for msname in msnames:
         os.system("addImagingColumns.py %s" % msname)
@@ -72,7 +72,31 @@ def concatenate(msnames, outdir, parmdb):
             v = pdb.getValuesGrid(parmname)
             pdb_concat.addValues(v)
 
-    return concat_msname
+    print('Splitting off CORRECTED_DATA...')
+    newmsname = outdir + "/to_image_screen.ms"
+    parset = outdir+'/NDPPP_copy.parset'
+    f = open(parset, 'w')
+    f.write("msin={0}\n"
+        "msin.datacolumn=CORRECTED_DATA\n"
+        "msout={1}\n"
+        "msin.startchan = 0\n"
+        "msin.nchan = 0\n"
+        "steps = []\n".format(concat_msname, newmsname))
+    f.close()
+    subprocess.call("NDPPP {0}".format(parset), shell=True)
+   if noscreen:
+        print('Splitting off CORRECTED_DATA_NOTEC...')
+        newmsname = outdir + "/to_image_noscreen.ms"
+        parset = outdir+'/NDPPP_copy.parset'
+        f = open(parset, 'w')
+        f.write("msin={0}\n"
+            "msin.datacolumn=CORRECTED_DATA_NOTEC\n"
+            "msout={1}\n"
+            "msin.startchan = 0\n"
+            "msin.nchan = 0\n"
+            "steps = []\n".format(concat_msname, newmsname))
+        f.close()
+        subprocess.call("NDPPP {0}".format(parset), shell=True)
 
 
 def createMask(msfile, skymodel, npix, cellsize, filename=None, logfilename=None):
@@ -176,29 +200,19 @@ def awimager(msname, imageroot, UVmax, cellsize, npix, threshold, mask_image=Non
     npix = str(npix)
     threshold = '{0}Jy'.format(threshold)
 
-    callStr = 'awimager ms=%s data=CORRECTED_DATA image=%s/%s '\
+    callStr = 'awimager ms=%s data=DATA image=%s/%s '\
         'operation=mfclark niter=%s UVmax=%f cellsize=%s npix=%s '\
         'threshold=%s weight=briggs robust=%f '\
-        % (msname, imagedir, imageroot, niter, UVmax, cellsize, npix, threshold, robust)
-    if logfilename is not None:
-        callStr += '>> {0} 2>&1 '.format(logfilename)
+        % (msname, imagedir, imageroot, niter, UVmax, cellsize, npix,
+        threshold, robust)
 
     if use_ion:
         callStr += 'applyIonosphere=1 timewindow=10 SpheSupport=45 parmdbname=%s '\
             % (parmdbname)
-    else:
-        parset = imagedir+'/NDPPP_copy.parset'
-        f = open(parset, 'w')
-        f.write("msin={0}\n"
-            "msin.datacolumn=CORRECTED_DATA_NOTEC\n"
-            "msout={1}\n"
-            "msin.startchan = 0\n"
-            "msin.nchan = 0\n"
-            "steps = []\n".format(msname, newmsname))
-        f.close()
-        subprocess.call("NDPPP {0}".format(parset), shell=True)
     if mask_image is not None:
         callStr += 'mask=%s' % mask_image
+    if logfilename is not None:
+        callStr += '>> {0} 2>&1 '.format(logfilename)
 
     os.system(callStr)
 
@@ -267,8 +281,11 @@ if __name__=='__main__':
         log = logging.getLogger("Main")
         log.info('Imaging the following data: {0}'.format(ms_list))
         log.info('Copying and concatenating data (if needed)...')
-        msname = concatenate(ms_list, options.outdir, options.parmdb)
-        log.info('MS to be imaged is {0}'.format(msname))
+        msnames = [outdir + "/to_image_screen.ms"]
+        if options.noscreen:
+            msnames.append(outdir + "/to_image_noscreen.ms")
+        concatenate(ms_list, options.outdir, options.parmdb, options.noscreen)
+        log.info('MS to be imaged: {0}'.format(msnames))
 
         # Define image properties, etc.
         imagedir = options.outdir
@@ -279,7 +296,7 @@ if __name__=='__main__':
             use_ions.append(False)
         UVmax = options.uvmax
 
-        for imageroot, use_ion in zip(imageroots, use_ions):
+        for msname, imageroot, use_ion in zip(msnames, imageroots, use_ions):
             if options.automask > 0:
                 from lofar import bdsm
                 mask_image = imagedir + '/' + imageroot + '.mask'
