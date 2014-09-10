@@ -281,7 +281,7 @@ if __name__=='__main__':
         log = logging.getLogger("Main")
         log.info('Imaging the following data: {0}'.format(ms_list))
         log.info('Copying and concatenating data (if needed)...')
-        msnames = [options.outdir + "/to_image_screen.ms"]
+        msnames = [] #[options.outdir + "/to_image_screen.ms"]
         if options.noscreen:
             msnames.append(options.outdir + "/to_image_noscreen.ms")
         concatenate(ms_list, options.outdir, options.parmdb, options.noscreen)
@@ -289,7 +289,7 @@ if __name__=='__main__':
 
         # Define image properties, etc.
         imagedir = options.outdir
-        imageroots = ['aprojection']
+        imageroots = [] #['aprojection']
         use_ions = [] #[True]
         if options.noscreen:
             imageroots.append('original')
