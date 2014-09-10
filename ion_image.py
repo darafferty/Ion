@@ -62,16 +62,6 @@ def concatenate(msnames, outdir, parmdb, noscreen=False):
 
     pyrap.tables.msutil.msconcat(msnames, concat_msname)
 
-    pdb_concat_name = concat_msname + "/ionosphere"
-    os.system("rm %s -rf" % pdb_concat_name)
-    pdb_concat = lofar.parmdb.parmdb(pdb_concat_name, create=True)
-
-    for msname in msnames:
-        pdb = lofar.parmdb.parmdb(msname + "/" + parmdb)
-        for parmname in pdb.getNames():
-            v = pdb.getValuesGrid(parmname)
-            pdb_concat.addValues(v)
-
     print('Splitting off CORRECTED_DATA...')
     newmsname = outdir + "/to_image_screen.ms"
     parset = outdir+'/NDPPP_copy.parset'
@@ -84,6 +74,16 @@ def concatenate(msnames, outdir, parmdb, noscreen=False):
         "steps = []\n".format(concat_msname, newmsname))
     f.close()
     subprocess.call("NDPPP {0}".format(parset), shell=True)
+    pdb_concat_name = newmsname + "/ionosphere"
+    os.system("rm %s -rf" % pdb_concat_name)
+    pdb_concat = lofar.parmdb.parmdb(pdb_concat_name, create=True)
+
+    for msname in msnames:
+        pdb = lofar.parmdb.parmdb(msname + "/" + parmdb)
+        for parmname in pdb.getNames():
+            v = pdb.getValuesGrid(parmname)
+            pdb_concat.addValues(v)
+
     if noscreen:
         print('Splitting off CORRECTED_DATA_NOTEC...')
         newmsname = outdir + "/to_image_noscreen.ms"
@@ -97,6 +97,15 @@ def concatenate(msnames, outdir, parmdb, noscreen=False):
             "steps = []\n".format(concat_msname, newmsname))
         f.close()
         subprocess.call("NDPPP {0}".format(parset), shell=True)
+        pdb_concat_name = newmsname + "/ionosphere"
+        os.system("rm %s -rf" % pdb_concat_name)
+        pdb_concat = lofar.parmdb.parmdb(pdb_concat_name, create=True)
+
+        for msname in msnames:
+            pdb = lofar.parmdb.parmdb(msname + "/" + parmdb)
+            for parmname in pdb.getNames():
+                v = pdb.getValuesGrid(parmname)
+                pdb_concat.addValues(v)
 
 
 def createMask(msfile, skymodel, npix, cellsize, filename=None, logfilename=None):
@@ -281,7 +290,7 @@ if __name__=='__main__':
         log = logging.getLogger("Main")
         log.info('Imaging the following data: {0}'.format(ms_list))
         log.info('Copying and concatenating data (if needed)...')
-        msnames = [] #[options.outdir + "/to_image_screen.ms"]
+        msnames = [options.outdir + "/to_image_screen.ms"]
         if options.noscreen:
             msnames.append(options.outdir + "/to_image_noscreen.ms")
         concatenate(ms_list, options.outdir, options.parmdb, options.noscreen)
@@ -289,8 +298,8 @@ if __name__=='__main__':
 
         # Define image properties, etc.
         imagedir = options.outdir
-        imageroots = [] #['aprojection']
-        use_ions = [] #[True]
+        imageroots = ['aprojection']
+        use_ions = [True]
         if options.noscreen:
             imageroots.append('original')
             use_ions.append(False)
