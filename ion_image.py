@@ -187,7 +187,16 @@ def awimager(msname, imageroot, UVmax, cellsize, npix, threshold, mask_image=Non
         callStr += 'applyIonosphere=1 timewindow=10 SpheSupport=45 parmdbname=%s '\
             % (parmdbname)
     else:
-        callStr += 'data=CORRECTED_DATA_NOTEC '
+        parset = imagedir+'/NDPPP_copy.parset'
+        f = open(, 'w')
+        f.write("msin={0}\n"
+            "msin.datacolumn=CORRECTED_DATA_NOTEC\n"
+            "msout={1}\n"
+            "msin.startchan = 0\n"
+            "msin.nchan = 0\n"
+            "steps = []\n".format(msname, newmsname))
+        f.close()
+        subprocess.call("NDPPP {0}".format(parset), shell=True)
     if mask_image is not None:
         callStr += 'mask=%s' % mask_image
 
@@ -264,7 +273,7 @@ if __name__=='__main__':
         # Define image properties, etc.
         imagedir = options.outdir
         imageroots = ['aprojection']
-        use_ions = [True]
+        use_ions = [] #[True]
         if options.noscreen:
             imageroots.append('original')
             use_ions.append(False)
