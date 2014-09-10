@@ -84,7 +84,7 @@ def concatenate(msnames, outdir, parmdb, noscreen=False):
         "steps = []\n".format(concat_msname, newmsname))
     f.close()
     subprocess.call("NDPPP {0}".format(parset), shell=True)
-   if noscreen:
+    if noscreen:
         print('Splitting off CORRECTED_DATA_NOTEC...')
         newmsname = outdir + "/to_image_noscreen.ms"
         parset = outdir+'/NDPPP_copy.parset'
