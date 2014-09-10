@@ -281,9 +281,9 @@ if __name__=='__main__':
         log = logging.getLogger("Main")
         log.info('Imaging the following data: {0}'.format(ms_list))
         log.info('Copying and concatenating data (if needed)...')
-        msnames = [outdir + "/to_image_screen.ms"]
+        msnames = [options.outdir + "/to_image_screen.ms"]
         if options.noscreen:
-            msnames.append(outdir + "/to_image_noscreen.ms")
+            msnames.append(options.outdir + "/to_image_noscreen.ms")
         concatenate(ms_list, options.outdir, options.parmdb, options.noscreen)
         log.info('MS to be imaged: {0}'.format(msnames))
 
