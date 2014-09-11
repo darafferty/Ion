@@ -353,9 +353,9 @@ if __name__=='__main__':
         init_logger(logfilename, debug=options.verbose)
         log = logging.getLogger("Main")
         log.info('Imaging the following data: {0}'.format(ms_list))
-        msnames = [options.outdir + "/to_image_screen.ms"]
+        msnames = [options.outdir + "/concat_screen.ms"]
         if options.noscreen:
-            msnames.append(options.outdir + "/to_image_noscreen.ms")
+            msnames.append(options.outdir + "/concat_noscreen.ms")
 
         # Concatenate (includes correction for beam, etc. towards phase center)
         log.info('Copying, correcting, and concatenating data...')
