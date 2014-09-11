@@ -8,7 +8,6 @@ operations.
 Steps:
   - runs H5parmExporter.py to export TEC screens to parmdbs
   - runs BBS for dir-indep. calibration with screen included
-  - clips amplitudes
 """
 
 import os
@@ -57,41 +56,11 @@ class MultiLineFormatter(logging.Formatter):
         return str
 
 
-def clip(msnames, station_selection, threshold=750):
-    """Clip CORRECTED_DATA amplitudes above threshold and adjust flags"""
-
-    for msname in msnames:
-        t = pyrap.tables.table(msname, readonly = False)
-        if os.path.exists(msname + '.flags'):
-            t_flags = pyrap.tables.table(msname + '.flags')
-        else:
-            t_flags = t.select("FLAG").copy(msname + '.flags', deep=True)
-
-        t_ant = pyrap.tables.table(msname + '/ANTENNA')
-        ant_names = t_ant.getcol('NAME')
-
-        ant1 = t.getcol("ANTENNA1")
-        f1 = numpy.array([ant_names[ant] not in station_selection for ant in ant1])
-
-        ant2 = t.getcol("ANTENNA2")
-        f2 = numpy.array([ant_names[ant] not in station_selection for ant in ant2])
-
-        f = t_flags.getcol("FLAG")
-        f = numpy.logical_or(f, f1[:, numpy.newaxis, numpy.newaxis])
-        f = numpy.logical_or(f, f2[:, numpy.newaxis, numpy.newaxis])
-
-        d = t.getcol("CORRECTED_DATA")
-
-        f = numpy.logical_or(f, abs(d)>threshold)
-        t.putcol("FLAG", f)
-        t.flush()
-
-
-def makeNonDirParset(outdir):
+def makeNonDirParset(outdir, solint=1, uvmin=80, freqint=10):
     """Makes BBS parset for dir-indep calibration with screen included"""
     newlines = ['Strategy.Stations = []\n',
         'Strategy.InputColumn = DATA\n',
-        'Strategy.ChunkSize = 1500\n',
+        'Strategy.ChunkSize = 250\n',
         'Strategy.UseSolver = F\n',
         'Strategy.Steps = [solve]\n',
         'Strategy.Baselines = *& \n',
@@ -106,10 +75,10 @@ def makeNonDirParset(outdir):
         'Step.solve.Model.Gain.Enable = F\n',
         'Step.solve.Model.CommonScalarPhase.Enable= T\n',
         'Step.solve.Solve.Mode = COMPLEX\n',
-        'Step.solve.Solve.UVRange = [80]\n',
+        'Step.solve.Solve.UVRange = [{0}]\n'.format(uvmin),
         'Step.solve.Solve.Parms = ["CommonScalarPhase:*"]\n',
-        'Step.solve.Solve.CellSize.Freq = 10\n',
-        'Step.solve.Solve.CellSize.Time = 5\n',
+        'Step.solve.Solve.CellSize.Freq = {0}\n'.format(freqint),
+        'Step.solve.Solve.CellSize.Time = {0}\n'.format(solint),
         'Step.solve.Solve.CellChunkSize = 1\n',
         'Step.solve.Solve.PropagateSolutions = T']
     parset = outdir + '/bbs_nondir.parset'
@@ -122,7 +91,7 @@ def makeNonDirParset(outdir):
 def makePredictParset(outdir):
     """Makes BBS parset for predict with screen included"""
     newlines = ['Strategy.Stations = []\n',
-        'Strategy.ChunkSize = 1500\n',
+        'Strategy.ChunkSize = 250\n',
         'Strategy.Steps = [predict]\n',
         'Strategy.Baselines = *& \n',
         'Step.predict.Operation = PREDICT\n',
@@ -141,7 +110,7 @@ def makePredictParset(outdir):
     return parset
 
 
-def makeGainCalParset(msname, parmdb):
+def makeGainCalParset(msname, parmdb, solint=1, uvmin=80, freqint=10):
     """Makes an NDPPP parset to perform a dir-independent calibration using
     the MODEL_DATA_TEC column"""
     outdir = '/'.join(msname.split('/')[:-1])
@@ -155,7 +124,7 @@ def makeGainCalParset(msname, parmdb):
         'solve.parmdb = {0}/{1}\n'.format(msname, parmdb),
         'solve.usebeammodel = False\n',
         'solve.maxiter = 50\n',
-        'solve.solint = 1\n',
+        'solve.solint = {0}\n'.format(solint),
         'solve.debuglevel = 2\n',
         'solve.tolerance = 1.e-4\n',
         'solve.stefcalvariant = 1c\n',
@@ -209,11 +178,11 @@ def makeCorrectParset(outdir, noTEC=False):
 
 def calibrateBBS(msname_parmdb):
     """Runs BBS with a phase-only, dir-independent calibration with screen included"""
-    msname, parmdb, skymodel = msname_parmdb
+    msname, parmdb, skymodel, solint = msname_parmdb
     root_dir = '/'.join(msname.split('/')[:-1])
 
     # Do dir-independent calibration with TEC screen included
-    parset = makeNonDirParset(root_dir)
+    parset = makeNonDirParset(root_dir, solint=solint)
     if skymodel == '':
         skymodel = root_dir + '/none'
         os.system("touch {0}".format(skymodel))
@@ -229,10 +198,10 @@ def calibrateNDPPP(msname_parmdb):
     """Runs NDPPP with a phase-only, dir-independent calibration with screen
     included.
 
-    Before running NDPPP, BBS is run to predict model, corrected for TEC
+    Before running NDPPP, BBS is run to predict the model, corrected for TEC
     screen, and store in MODEL_DATA_TEC column.
     """
-    msname, parmdb, skymodel = msname_parmdb
+    msname, parmdb, skymodel, solint = msname_parmdb
     root_dir = '/'.join(msname.split('/')[:-1])
 
     # Do a predict in BBS with TEC screen included
@@ -249,32 +218,7 @@ def calibrateNDPPP(msname_parmdb):
 
     # Do dir-independent calibration with TEC screen included
     parset = makeGainCalParset(msname, parmdb)
-#    os.system("NDPPP {0}".format(parset))
-
-
-def applyTEC(msname_parmdb):
-    """Applies dir-independent calibration, beam and TEC screen at phase
-    center to CORRECTED_DATA"""
-    msname, parmdb, skymodel = msname_parmdb
-    root_dir = '/'.join(msname.split('/')[:-1])
-
-    parset = makeCorrectParset(root_dir)
-    skymodel = root_dir + '/none'
-    os.system("touch {0}".format(skymodel))
-    os.system("calibrate-stand-alone --no-columns --parmdb-name {0} {1} {2} {3} "
-            "> {1}_apply.log 2>&1".format(parmdb, msname, parset, skymodel))
-
-
-def applyNoTEC(msname_parmdb):
-    """Applies beam at phase center to CORRECTED_DATA_NOTEC"""
-    msname, parmdb, skymodel = msname_parmdb
-    root_dir = '/'.join(msname.split('/')[:-1])
-
-    parset = makeCorrectParset(root_dir, noTEC=True)
-    skymodel = root_dir + '/none'
-    os.system("touch {0}".format(skymodel))
-    os.system("calibrate-stand-alone --no-columns --parmdb-name {0} {1} {2} {3} "
-            "> {1}_apply.log 2>&1".format(parmdb, msname, parset, skymodel))
+    os.system("NDPPP {0}".format(parset))
 
 
 if __name__=='__main__':
@@ -285,17 +229,16 @@ if __name__=='__main__':
         type='string', default='.')
     opt.add_option('-p', '--parmdb', help='Name of parmdb instument file to use '
         '[default: %default]', type='string', default='instrument')
-    opt.add_option('-s', '--skymodel', help='Name of sky model file to use. If no '
+    opt.add_option('-s', '--solint', help='Solution interval to use '
+        'for phase solutions (# of time slots) [default: %default]',
+        type='float', default='1')
+    opt.add_option('-m', '--model', help='Name of sky model file to use. If no '
         'file is given, the model is taken from the sky parmdb '
         '[default: %default]', type='string', default='')
-    opt.add_option('-b', '--bbs', help='Use BBS for dir-independent '
+    opt.add_option('-g', '--gaincal', help='Use NDPPP GainCal for dir-independent '
         'calibration [default: %default]', action='store_true', default=False)
     opt.add_option('-e', '--skipexport', help='Skip export of screen from H5parm '
         '[default: %default]', action='store_true', default=False)
-    opt.add_option('-C', '--skipclip', help='Skip clipping on CORRECTED_DATA amplitudes '
-        '[default: %default]', action='store_true', default=False)
-    opt.add_option('-t', '--threshold', help='Clipping threshold in Jy '
-        '[default: %default]', type='float', default=700.0)
     opt.add_option('-n', '--ncores', help='Maximum number of simultaneous '
         'calibration runs [default: %default]', type='int', default='8')
     opt.add_option('-v', '--verbose', help='Set verbose output and interactive '
@@ -345,22 +288,15 @@ if __name__=='__main__':
 
         # Calibrate
         log.info('Performing calibration with screens included...')
-        skymodel_list = [options.skymodel] * len(ms_list)
+        skymodel_list = [options.model] * len(ms_list)
+        solint_list = [options.solint] * len(ms_list)
         workers = Pool(processes=min(len(ms_list), options.ncores))
-        if options.bbs:
-            workers.map(calibrateBBS, zip(ms_list, out_parmdb_list, skymodel_list))
+        if options.gaincal:
+            workers.map(calibrateNDPPP, zip(ms_list, out_parmdb_list,
+                skymodel_list, solint_list))
         else:
-            workers.map(calibrateNDPPP, zip(ms_list, out_parmdb_list, skymodel_list))
-        log.info('Correcting data at phase center for gain, beam, and screens...')
-        workers.map(applyTEC, zip(ms_list, out_parmdb_list, skymodel_list))
-        workers.map(applyNoTEC, zip(ms_list, out_parmdb_list, skymodel_list))
-
-        # Clip high data amplitudes
-        if not options.skipclip:
-            H = h5parm(h5)
-            station_selection = H.getAnt(solset).keys()
-            log.info('Clipping CORRECTED_DATA amplitudes at {0} Jy...'.format(options.threshold))
-            clip(ms_list, station_selection, threshold=options.threshold)
+            workers.map(calibrateBBS, zip(ms_list, out_parmdb_list,
+                skymodel_list, solint_list))
 
         log.info('TEC screen application complete.')
 

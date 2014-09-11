@@ -52,55 +52,113 @@ class MultiLineFormatter(logging.Formatter):
         str = str.replace('\n', '\n' + ' '*len(header))
         return str
 
-
-def concatenate(msnames, outdir, parmdb, noscreen=False):
-    """Copies and concatenates the input MSes"""
-    concat_msname = outdir + "/concat.ms"
-
-    for msname in msnames:
-        os.system("addImagingColumns.py %s" % msname)
-
-    pyrap.tables.msutil.msconcat(msnames, concat_msname)
-
-    print('Splitting off CORRECTED_DATA...')
-    newmsname = outdir + "/to_image_screen.ms"
-    parset = outdir+'/NDPPP_copy.parset'
+def makeCorrectParset(outdir, noTEC=False):
+    """Makes BBS parset to correct DATA at phase center for various effects"""
+    newlines = ['Strategy.Stations = []\n',
+        'Strategy.InputColumn = DATA\n',
+        'Strategy.ChunkSize = 250\n',
+        'Strategy.UseSolver = F\n']
+    if noTEC:
+        newlines += ['Strategy.Steps = [correct_beam]\n',
+        'Step.correct_beam.Operation = CORRECT\n',
+        'Step.correct_beam.Model.Sources = []\n',
+        'Step.correct_beam.Model.Beam.Enable = T\n',
+        'Step.correct_beam.Model.Beam.UseChannelFreq = T\n',
+        'Step.correct_beam.Output.Column = CORRECTED_DATA\n',
+        'Step.correct_beam.Output.WriteFlags = F']
+    else:
+        newlines += ['Strategy.Steps = [correct_beam_phase, correct_screen]\n',
+        'Step.correct_beam_phase.Operation = CORRECT\n',
+        'Step.correct_beam_phase.Model.Sources = []\n',
+        'Step.correct_beam_phase.Model.Beam.Enable = T\n',
+        'Step.correct_beam_phase.Model.Beam.Mode = ARRAY_FACTOR\n',
+        'Step.correct_beam_phase.Model.Beam.UseChannelFreq = T\n',
+        'Step.correct_beam_phase.Model.Gain.Enable = F\n',
+        'Step.correct_beam_phase.Model.CommonScalarPhase.Enable = T\n',
+        'Step.correct_screen.Operation = CORRECT\n',
+        'Step.correct_screen.Model.Sources = []\n',
+        'Step.correct_screen.Model.Ionosphere.Enable = T\n',
+        'Step.correct_screen.Model.Ionosphere.Type = EXPION\n',
+        'Step.correct_screen.Output.Column = CORRECTED_DATA\n',
+        'Step.correct_screen.Output.WriteFlags = F']
+    if noTEC:
+        parset = outdir + '/bbs_correct_notec.parset'
+    else:
+        parset = outdir + '/bbs_correct_tec.parset'
     f = open(parset, 'w')
-    f.write("msin={0}\n"
-        "msin.datacolumn=CORRECTED_DATA\n"
-        "msout={1}\n"
-        "msin.startchan = 0\n"
-        "msin.nchan = 0\n"
-        "steps = []\n".format(concat_msname, newmsname))
+    f.writelines(newlines)
     f.close()
-    subprocess.call("NDPPP {0}".format(parset), shell=True)
-    pdb_concat_name = newmsname + "/ionosphere"
-    os.system("rm %s -rf" % pdb_concat_name)
-    pdb_concat = lofar.parmdb.parmdb(pdb_concat_name, create=True)
+    return parset
+
+
+def apply(msnames, parmdb, noTEC=False, logfilename='apply.log'):
+    """Applies beam or dir-independent calibration, beam, and TEC screen at phase
+    center to CORRECTED_DATA"""
+    root_dir = '/'.join(msname.split('/')[:-1])
+    parset = makeCorrectParset(root_dir, noTEC)
+    skymodel = root_dir + '/none'
+    os.system("touch {0}".format(skymodel))
+    for msname in msnames:
+        os.system("calibrate-stand-alone --no-columns --parmdb-name {0} {1} {2} {3} "
+                "> {4} 2>&1".format(parmdb, msname, parset, skymodel, logfilename))
+
+
+def clip(msnames, station_selection=None, threshold=750):
+    """Clip CORRECTED_DATA amplitudes above threshold and adjust flags"""
 
     for msname in msnames:
-        pdb = lofar.parmdb.parmdb(msname + "/" + parmdb)
-        for parmname in pdb.getNames():
-            v = pdb.getValuesGrid(parmname)
-            pdb_concat.addValues(v)
+        t = pyrap.tables.table(msname, readonly = False)
+        if os.path.exists(msname + '.flags'):
+            t_flags = pyrap.tables.table(msname + '.flags')
+        else:
+            t_flags = t.select("FLAG").copy(msname + '.flags', deep=True)
 
+        t_ant = pyrap.tables.table(msname + '/ANTENNA')
+        ant_names = t_ant.getcol('NAME')
+        if station_selection is None:
+            station_selection = ant_names
+
+        ant1 = t.getcol("ANTENNA1")
+        f1 = numpy.array([ant_names[ant] not in station_selection for ant in ant1])
+
+        ant2 = t.getcol("ANTENNA2")
+        f2 = numpy.array([ant_names[ant] not in station_selection for ant in ant2])
+
+        f = t_flags.getcol("FLAG")
+        f = numpy.logical_or(f, f1[:, numpy.newaxis, numpy.newaxis])
+        f = numpy.logical_or(f, f2[:, numpy.newaxis, numpy.newaxis])
+
+        d = t.getcol("CORRECTED_DATA")
+
+        f = numpy.logical_or(f, abs(d)>threshold)
+        t.putcol("FLAG", f)
+        t.flush()
+
+
+def concatenate(msnames, outdir, parmdb, noscreen=False, logfilename=None,
+    cliplevel=750.0):
+    """Coorrects, clips, and concatenates the input MSes"""
+    noTEClist = [False]
     if noscreen:
-        print('Splitting off CORRECTED_DATA_NOTEC...')
-        newmsname = outdir + "/to_image_noscreen.ms"
-        parset = outdir+'/NDPPP_copy.parset'
-        f = open(parset, 'w')
-        f.write("msin={0}\n"
-            "msin.datacolumn=CORRECTED_DATA_NOTEC\n"
-            "msout={1}\n"
-            "msin.startchan = 0\n"
-            "msin.nchan = 0\n"
-            "steps = []\n".format(concat_msname, newmsname))
-        f.close()
-        subprocess.call("NDPPP {0}".format(parset), shell=True)
+        noTEClist.append(True)
+
+    for noTEC in noTEClist:
+        # Correct the DATA column for beam, phase, and screen in phase center
+        # and write to CORRECTED_DATA column
+        apply(msnames, parmdb, noTEC=noTEC, logfilename=logfilename)
+        clip(msnames, threshold=cliplevel)
+
+        # Concatenate
+        if noTEC:
+            concat_msname = outdir + "/concat_noscreen.ms"
+        else:
+            concat_msname = outdir + "/concat_screen.ms"
+        pyrap.tables.msutil.msconcat(msnames, concat_msname)
+
+        # Copy over parmdbs to concatenated MS
         pdb_concat_name = newmsname + "/ionosphere"
         os.system("rm %s -rf" % pdb_concat_name)
         pdb_concat = lofar.parmdb.parmdb(pdb_concat_name, create=True)
-
         for msname in msnames:
             pdb = lofar.parmdb.parmdb(msname + "/" + parmdb)
             for parmname in pdb.getNames():
@@ -209,7 +267,7 @@ def awimager(msname, imageroot, UVmax, cellsize, npix, threshold, mask_image=Non
     npix = str(npix)
     threshold = '{0}Jy'.format(threshold)
 
-    callStr = 'awimager ms=%s data=DATA image=%s/%s '\
+    callStr = 'awimager ms=%s data=CORRECTED_DATA image=%s/%s '\
         'operation=mfclark niter=%s UVmax=%f cellsize=%s npix=%s '\
         'threshold=%s weight=briggs robust=%f '\
         % (msname, imagedir, imageroot, niter, UVmax, cellsize, npix,
@@ -236,6 +294,8 @@ if __name__=='__main__':
         type='string', default='.')
     opt.add_option('-t', '--threshold', help='Clean threshold in Jy '
         '[default: %default]', type='float', default=0.5)
+    opt.add_option('-C', '--clip', help='Clipping threshold in Jy '
+        '[default: %default]', type='float', default=700.0)
     opt.add_option('-n', '--npix', help='Number of pixels in image '
         '[default: %default]', type='int', default=2048)
     opt.add_option('-p', '--parmdb', help='Name of parmdb instument file to use '
@@ -275,7 +335,6 @@ if __name__=='__main__':
                 'in .MS, .ms, .ms.peeled, or .MS.peeled')
             sys.exit()
 
-        # Concatenate data
         if not os.path.isdir(options.outdir):
             os.mkdir(options.outdir)
         elif options.clobber:
@@ -288,13 +347,16 @@ if __name__=='__main__':
         logfilename = options.outdir + '/ion_image.log'
         init_logger(logfilename, debug=options.verbose)
         log = logging.getLogger("Main")
-        log.info('Imaging the following data: {0}'.format(ms_list))
-        log.info('Copying and concatenating data (if needed)...')
+        log.info('Imaging the following MS(es): {0}'.format(ms_list))
         msnames = [options.outdir + "/to_image_screen.ms"]
         if options.noscreen:
             msnames.append(options.outdir + "/to_image_noscreen.ms")
-        concatenate(ms_list, options.outdir, options.parmdb, options.noscreen)
-        log.info('MS to be imaged: {0}'.format(msnames))
+
+        # Concatenate
+        log.info('Copying and concatenating MS(es) (if needed)...')
+        concatenate(ms_list, options.outdir, options.parmdb, options.noscreen,
+            logfilename=logfilename, cliplevel=options.clip)
+        log.info('Final MS(es) to be imaged: {0}'.format(msnames))
 
         # Define image properties, etc.
         imagedir = options.outdir
