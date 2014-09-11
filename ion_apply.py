@@ -182,7 +182,7 @@ def calibrateBBS(msname_parmdb):
     root_dir = '/'.join(msname.split('/')[:-1])
 
     # Do dir-independent calibration with TEC screen included
-    parset = makeNonDirParset(root_dir, solint=solint)
+    parset = makeNonDirParset(root_dir, solint=int(solint))
     if skymodel == '':
         skymodel = root_dir + '/none'
         os.system("touch {0}".format(skymodel))
