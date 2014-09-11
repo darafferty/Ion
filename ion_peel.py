@@ -19,6 +19,9 @@ All the measurement sets are assumed to be a single directory (defined by the
 'indir' option). All results are saved in an output directory (defined by the
 'outdir' option).
 
+Direction-independent selfcal solutions must have been applied to the
+CORRECTED_DATA column of all MS files before running this script.
+
 """
 import logging
 import os

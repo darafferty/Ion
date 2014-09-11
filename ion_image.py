@@ -5,7 +5,12 @@
 This script makes images with and without TEC screens applied
 
 Steps:
-  - concatenates MSes for the snapshots
+  - concatenates MSes for the snapshots. During this step, a correct step is
+    performed with BBS to apply the beam, direction-independent selfcal solutions
+    obtained with the screens included, and the screens to the phase center. For
+    the image without the screen applied, only the beam is applied. The
+    corrections are applied to the DATA column and written to the CORRECTED_DATA
+    column for imaging.
   - images, optionally using PyBDSM to generate clean masks
 
 """
@@ -94,7 +99,7 @@ def makeCorrectParset(outdir, noTEC=False):
 def apply(msnames, parmdb, noTEC=False, logfilename='apply.log'):
     """Applies beam or dir-independent calibration, beam, and TEC screen at phase
     center to CORRECTED_DATA"""
-    root_dir = '/'.join(msname.split('/')[:-1])
+    root_dir = '/'.join(msnames[0].split('/')[:-1])
     parset = makeCorrectParset(root_dir, noTEC)
     skymodel = root_dir + '/none'
     os.system("touch {0}".format(skymodel))

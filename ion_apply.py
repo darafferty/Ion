@@ -7,7 +7,9 @@ operations.
 
 Steps:
   - runs H5parmExporter.py to export TEC screens to parmdbs
-  - runs BBS for dir-indep. calibration with screen included
+  - runs BBS for dir-indep. calibration with screen included. Calibration is
+    done on the DATA column, so any direction-independent selfcal solutions
+    must have been applied to the DATA column before running this script
 """
 
 import os
