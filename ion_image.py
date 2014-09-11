@@ -161,7 +161,7 @@ def concatenate(msnames, outdir, parmdb, noscreen=False, logfilename=None,
         pyrap.tables.msutil.msconcat(msnames, concat_msname)
 
         # Copy over parmdbs to concatenated MS
-        pdb_concat_name = newmsname + "/ionosphere"
+        pdb_concat_name = concat_msname + "/ionosphere"
         os.system("rm %s -rf" % pdb_concat_name)
         pdb_concat = lofar.parmdb.parmdb(pdb_concat_name, create=True)
         for msname in msnames:
@@ -352,16 +352,16 @@ if __name__=='__main__':
         logfilename = options.outdir + '/ion_image.log'
         init_logger(logfilename, debug=options.verbose)
         log = logging.getLogger("Main")
-        log.info('Imaging the following MS(es): {0}'.format(ms_list))
+        log.info('Imaging the following data: {0}'.format(ms_list))
         msnames = [options.outdir + "/to_image_screen.ms"]
         if options.noscreen:
             msnames.append(options.outdir + "/to_image_noscreen.ms")
 
         # Concatenate (includes correction for beam, etc. towards phase center)
-        log.info('Copying, correcting, and concatenating MS(es)...')
+        log.info('Copying, correcting, and concatenating data...')
         concatenate(ms_list, options.outdir, options.parmdb, options.noscreen,
             logfilename=logfilename, cliplevel=options.clip)
-        log.info('Final MS(es) to be imaged: {0}'.format(msnames))
+        log.info('Final data to be imaged: {0}'.format(msnames))
 
         # Define image properties, etc.
         imagedir = options.outdir
