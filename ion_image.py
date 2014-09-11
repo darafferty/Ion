@@ -110,7 +110,7 @@ def apply(msnames, parmdb, noTEC=False, logfilename='apply.log'):
 
 def clip(msnames, station_selection=None, threshold=750):
     """Clip CORRECTED_DATA amplitudes above threshold and adjust flags"""
-
+    import numpy
     for msname in msnames:
         t = pyrap.tables.table(msname, readonly = False)
         if os.path.exists(msname + '.flags'):
@@ -357,8 +357,8 @@ if __name__=='__main__':
         if options.noscreen:
             msnames.append(options.outdir + "/to_image_noscreen.ms")
 
-        # Concatenate
-        log.info('Copying and concatenating MS(es) (if needed)...')
+        # Concatenate (includes correction for beam, etc. towards phase center)
+        log.info('Copying, correcting, and concatenating MS(es)...')
         concatenate(ms_list, options.outdir, options.parmdb, options.noscreen,
             logfilename=logfilename, cliplevel=options.clip)
         log.info('Final MS(es) to be imaged: {0}'.format(msnames))
