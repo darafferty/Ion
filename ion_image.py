@@ -76,7 +76,6 @@ def makeCorrectParset(outdir, noTEC=False):
         'Step.correct_beam_phase.Operation = CORRECT\n',
         'Step.correct_beam_phase.Model.Sources = []\n',
         'Step.correct_beam_phase.Model.Beam.Enable = T\n',
-        'Step.correct_beam_phase.Model.Beam.Mode = ARRAY_FACTOR\n',
         'Step.correct_beam_phase.Model.Beam.UseChannelFreq = T\n',
         'Step.correct_beam_phase.Model.Gain.Enable = F\n',
         'Step.correct_beam_phase.Model.CommonScalarPhase.Enable = T\n',
@@ -105,7 +104,7 @@ def apply(msnames, parmdb, noTEC=False, logfilename='apply.log'):
     os.system("touch {0}".format(skymodel))
     for msname in msnames:
         os.system("calibrate-stand-alone --no-columns --parmdb-name {0} {1} {2} {3} "
-                "> {4} 2>&1".format(parmdb, msname, parset, skymodel, logfilename))
+                ">> {4} 2>&1".format(parmdb, msname, parset, skymodel, logfilename))
 
 
 def clip(msnames, station_selection=None, threshold=750):
@@ -141,26 +140,23 @@ def clip(msnames, station_selection=None, threshold=750):
 
 
 def concatenate(msnames, outdir, parmdb, noscreen=False, logfilename=None,
-    cliplevel=750.0):
+    cliplevel=None):
     """Coorrects, clips, and concatenates the input MSes"""
-    noTEClist = [False]
-    if noscreen:
-        noTEClist.append(True)
-
-    for noTEC in noTEClist:
-        # Correct the DATA column for beam, phase, and screen in phase center
-        # and write to CORRECTED_DATA column
-        apply(msnames, parmdb, noTEC=noTEC, logfilename=logfilename)
+    # Correct the DATA column for beam, phase, and screen in phase center
+    # and write to CORRECTED_DATA column
+    apply(msnames, parmdb, noTEC=noscreen, logfilename=logfilename)
+    if cliplevel is not None:
         clip(msnames, threshold=cliplevel)
 
-        # Concatenate
-        if noTEC:
-            concat_msname = outdir + "/concat_noscreen.ms"
-        else:
-            concat_msname = outdir + "/concat_screen.ms"
-        pyrap.tables.msutil.msconcat(msnames, concat_msname)
+    # Concatenate
+    if noscreen:
+        concat_msname = outdir + "/concat_noscreen.ms"
+    else:
+        concat_msname = outdir + "/concat_screen.ms"
+    pyrap.tables.msutil.msconcat(msnames, concat_msname)
 
-        # Copy over parmdbs to concatenated MS
+    # Copy over parmdbs to concatenated MS if needed
+    if not noscreen:
         pdb_concat_name = concat_msname + "/ionosphere"
         os.system("rm %s -rf" % pdb_concat_name)
         pdb_concat = lofar.parmdb.parmdb(pdb_concat_name, create=True)
@@ -357,22 +353,26 @@ if __name__=='__main__':
         if options.noscreen:
             msnames.append(options.outdir + "/concat_noscreen.ms")
 
-        # Concatenate (includes correction for beam, etc. towards phase center)
-        log.info('Copying, correcting, and concatenating data...')
-        concatenate(ms_list, options.outdir, options.parmdb, options.noscreen,
-            logfilename=logfilename, cliplevel=options.clip)
-        log.info('Final data to be imaged: {0}'.format(msnames))
-
         # Define image properties, etc.
         imagedir = options.outdir
-        imageroots = ['aprojection']
+        imageroots = ['screen']
         use_ions = [True]
         if options.noscreen:
-            imageroots.append('original')
+            imageroots.append('noscreen')
             use_ions.append(False)
         UVmax = options.uvmax
 
         for msname, imageroot, use_ion in zip(msnames, imageroots, use_ions):
+            # Concatenate (includes correction for beam, etc. towards phase center)
+            log.info('Copying, correcting, and concatenating data...')
+            if use_ion:
+                noscreen = False
+            else:
+                noscreen = True
+            concatenate(ms_list, options.outdir, options.parmdb, noscreen,
+                logfilename=logfilename, cliplevel=options.clip)
+            log.info('Final data to be imaged: {0}'.format(msnames))
+
             if options.automask > 0:
                 from lofar import bdsm
                 mask_image = imagedir + '/' + imageroot + '.mask'
@@ -417,8 +417,7 @@ if __name__=='__main__':
             else:
                 log.info('Calling AWimager to make {0} image...'.format(imageroot))
                 awimager(msname, imageroot, UVmax, options.size, options.npix,
-                    options.threshold, use_ion=use_ion,
-                    imagedir=imagedir, logfilename=logfilename, clobber=True,
-                    niter=options.iter)
+                    options.threshold, use_ion=use_ion, imagedir=imagedir,
+                    logfilename=logfilename, clobber=True, niter=options.iter)
 
         log.info('Imaging complete.')
