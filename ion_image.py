@@ -363,6 +363,8 @@ if __name__=='__main__':
         UVmax = options.uvmax
 
         for msname, imageroot, use_ion in zip(msnames, imageroots, use_ions):
+            log.info('Preparing to make {0} image...'.format(imageroot))
+
             # Concatenate (includes correction for beam, etc. towards phase center)
             log.info('Correcting and concatenating data...')
             if use_ion:
@@ -371,7 +373,7 @@ if __name__=='__main__':
                 noscreen = True
             concatenate(ms_list, options.outdir, options.parmdb, noscreen,
                 logfilename=logfilename, cliplevel=options.clip)
-            log.info('Final data to be imaged: {0}'.format(msnames))
+            log.info('Final data to be imaged: {0}'.format(msname))
 
             if options.automask > 0:
                 from lofar import bdsm
@@ -395,6 +397,7 @@ if __name__=='__main__':
                     options.threshold, mask_image=mask_image, use_ion=use_ion,
                     imagedir=imagedir, logfilename=logfilename, clobber=True,
                     niter=options.iter)
+
             elif options.maskfile != '':
                 if os.path.isdir(options.maskfile):
                     mask_image = options.maskfile
@@ -414,6 +417,7 @@ if __name__=='__main__':
                     options.threshold, mask_image=mask_image, use_ion=use_ion,
                     imagedir=imagedir, logfilename=logfilename, clobber=True,
                     niter=options.iter)
+
             else:
                 log.info('Calling AWimager to make {0} image...'.format(imageroot))
                 awimager(msname, imageroot, UVmax, options.size, options.npix,
