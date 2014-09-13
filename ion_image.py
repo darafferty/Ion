@@ -364,7 +364,7 @@ if __name__=='__main__':
 
         for msname, imageroot, use_ion in zip(msnames, imageroots, use_ions):
             # Concatenate (includes correction for beam, etc. towards phase center)
-            log.info('Copying, correcting, and concatenating data...')
+            log.info('Correcting and concatenating data...')
             if use_ion:
                 noscreen = False
             else:
