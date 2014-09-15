@@ -97,7 +97,7 @@ def makeCorrectParset(outdir, noTEC=False):
 
 def apply(msnames, parmdb, noTEC=False, logfilename='apply.log'):
     """Applies beam or dir-independent calibration, beam, and TEC screen at phase
-    center to CORRECTED_DATA"""
+    center to DATA column and writes to CORRECTED_DATA"""
     root_dir = '/'.join(msnames[0].split('/')[:-1])
     parset = makeCorrectParset(root_dir, noTEC)
     skymodel = root_dir + '/none'
@@ -141,7 +141,7 @@ def clip(msnames, station_selection=None, threshold=750):
 
 def concatenate(msnames, outdir, parmdb, noscreen=False, logfilename=None,
     cliplevel=None):
-    """Coorrects, clips, and concatenates the input MSes"""
+    """Corrects, clips, and concatenates the input MSes"""
     # Correct the DATA column for beam, phase, and screen in phase center
     # and write to CORRECTED_DATA column
     apply(msnames, parmdb, noTEC=noscreen, logfilename=logfilename)
