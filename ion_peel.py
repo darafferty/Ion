@@ -600,7 +600,7 @@ def make_peeling_parset(parset, peel_bins, scalar_phase=True, phase_only=True,
                 'Step.solvea{0}.Solve.Options.LMFactor = 1.0\n'.format(i+1),
                 'Step.solvea{0}.Solve.Options.BalancedEqs = F\n'.format(i+1),
                 'Step.solvea{0}.Solve.Options.UseSVD = T\n'.format(i+1),
-                'Step.solvea{0}.Solve.UVRange = [250]\n'.format(i+1)]
+                'Step.solvea{0}.Solve.UVRange = [80]\n'.format(i+1)]
 
         # Subtract sources in current bin
         if i < nbins - 1:
