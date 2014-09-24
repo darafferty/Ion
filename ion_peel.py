@@ -430,7 +430,7 @@ def peel_band(band):
         # Make the parset and do the peeling
         make_peeling_parset(peelparset_timecorr, band.peel_bins,
             scalar_phase=band.use_scalar_phase, phase_only=True,
-            time_block=band.time_block)
+            time_block=band.time_block, beam_mode=band.beam_mode)
         calibrate(newmsname, peelparset_timecorr, skymodel, msname,
             use_timecorr=True, outdir=band.outdir, instrument='instrument',
             time_block=band.time_block, ionfactor=band.ionfactor,
@@ -490,7 +490,7 @@ def make_dirindep_parset(parset, scalar_phase=True, sol_int=1):
 
 
 def make_peeling_parset(parset, peel_bins, scalar_phase=True, phase_only=True,
-    sol_int_amp=500, time_block=None):
+    sol_int_amp=500, time_block=None, beam_mode='ARRAY_FACTOR'):
     """Makes a BBS parset for peeling
 
     For best results, the sources should be peeled in order of decreasing flux.
@@ -993,6 +993,8 @@ if __name__=='__main__':
         'arguments are ignored', type='str', default=None)
     opt.add_option('-m', '--majcut', help='Maximum major axis size in '
         'arcmin for calibrators [default: %default]', type='float', default=None)
+    opt.add_option('-B', '--beam', help='Beam mode to use during peeling '
+        '[default: %default]', type='int', default='ARRAY_FACTOR')
     opt.add_option('-b', '--nbands', help='Minimum number of bands that a '
         'calibrator must have to be used [default: %default]', type='int', default='8')
     opt.add_option('-a', '--navg', help='Number of frequency channels to '
@@ -1083,7 +1085,7 @@ if __name__=='__main__':
 
         # Make a master sky model from which calibrators will be chosen. The flux
         # cut is set to 10% of the input flux cutoff.
-        log.info('Searching GSM for suitable calibrators...')
+        log.info('Searching sky model for suitable calibrators...')
         if options.gsm is not None:
             master_skymodel = options.gsm
         else:
@@ -1232,6 +1234,7 @@ if __name__=='__main__':
             # For each Band instance, set options
             band.master_skymodel = master_skymodel
             band.use_patches = options.patches
+            band.beam_mode = options.beam
             band.do_peeling = True
             band.nsrc_per_bin = 1
             band.use_scalar_phase = True
