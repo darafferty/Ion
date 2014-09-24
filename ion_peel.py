@@ -994,7 +994,7 @@ if __name__=='__main__':
     opt.add_option('-m', '--majcut', help='Maximum major axis size in '
         'arcmin for calibrators [default: %default]', type='float', default=None)
     opt.add_option('-B', '--beam', help='Beam mode to use during peeling '
-        '[default: %default]', type='int', default='ARRAY_FACTOR')
+        '[default: %default]', type='str', default='ARRAY_FACTOR')
     opt.add_option('-b', '--nbands', help='Minimum number of bands that a '
         'calibrator must have to be used [default: %default]', type='int', default='8')
     opt.add_option('-a', '--navg', help='Number of frequency channels to '
