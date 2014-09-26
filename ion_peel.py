@@ -438,8 +438,15 @@ def peel_band(band):
             ncores=band.ncores_per_cal)
 
 
-def make_dirindep_parset(parset, scalar_phase=True, sol_int=1):
+def make_dirindep_parset(parset, scalar_phase=True, sol_int=1, beam_mode='DEFAULT'):
     """Makes a BBS parset for dir-independent calibration"""
+
+    # Handle beam
+    if beam_mode == 'OFF':
+        beam_enable = 'F'
+        beam_mode = 'DEFAULT'
+    else:
+        beam_enable = 'T'
 
     newlines = ['Strategy.InputColumn = DATA\n',
         'Strategy.ChunkSize = 100\n',
@@ -454,8 +461,8 @@ def make_dirindep_parset(parset, scalar_phase=True, sol_int=1):
         'Step.solve.Model.Phasors.Enable = T\n',
         'Step.solve.Model.Gain.Enable = T\n',
         'Step.solve.Model.CommonScalarPhase.Enable= T\n',
-        'Step.solve.Model.Beam.Enable = T\n',
-        'Step.solve.Model.Beam.Mode = ARRAY_FACTOR\n',
+        'Step.solve.Model.Beam.Enable = {0}\n'.format(beam_enable),
+        'Step.solve.Model.Beam.Mode = {0}\n'.format(beam_mode),
         'Step.solve.Model.Beam.UseChannelFreq = T\n',
         'Step.solve.Solve.Mode = COMPLEX\n',
         'Step.solve.Solve.UVRange = [80]\n']
@@ -490,7 +497,7 @@ def make_dirindep_parset(parset, scalar_phase=True, sol_int=1):
 
 
 def make_peeling_parset(parset, peel_bins, scalar_phase=True, phase_only=True,
-    sol_int_amp=500, time_block=None, beam_mode='ARRAY_FACTOR'):
+    sol_int_amp=500, time_block=None, beam_mode='DEFAULT'):
     """Makes a BBS parset for peeling
 
     For best results, the sources should be peeled in order of decreasing flux.
@@ -531,27 +538,34 @@ def make_peeling_parset(parset, peel_bins, scalar_phase=True, phase_only=True,
         strategy_str += ']\n'
     newlines += strategy_str
 
+    # Handle beam
+    if beam_mode == 'OFF':
+        beam_enable = 'F'
+        beam_mode = 'DEFAULT'
+    else:
+        beam_enable = 'T'
+
     # Subtract field (all sources)
     newlines += ['\n', 'Step.subtractfield.Operation = SUBTRACT\n',
         'Step.subtractfield.Model.Sources = []\n',
-        'Step.subtractfield.Model.Beam.Enable = T\n',
-        'Step.subtractfield.Model.Beam.Mode = ARRAY_FACTOR\n',
+        'Step.subtractfield.Model.Beam.Enable = {0}\n'.format(beam_enable),
+        'Step.subtractfield.Model.Beam.Mode = {0}\n'.format(beam_mode),
         '\n']
 
     for i, peel_bin in enumerate(peel_bins):
         # Add sources in current bin
         newlines += ['Step.add{0}.Operation = ADD\n'.format(i+1),
             'Step.add{0}.Model.Sources = '.format(i+1) + str(peel_bin['names']) + '\n',
-            'Step.add{0}.Model.Beam.Enable = T\n'.format(i+1),
-            'Step.add{0}.Model.Beam.Mode = ARRAY_FACTOR\n'.format(i+1),
+            'Step.add{0}.Model.Beam.Enable = {1}\n'.format(i+1, beam_enable),
+            'Step.add{0}.Model.Beam.Mode = {1}\n'.format(i+1, beam_mode),
             '\n']
 
         # Phase-only solve
         newlines += ['Step.solve{0}{1}.Operation = SOLVE\n'.format(pstr, i+1),
             'Step.solve{0}{1}.Model.Sources = '.format(pstr, i+1) + str(peel_bin['names']) + '\n',
             'Step.solve{0}{1}.Model.Cache.Enable = T\n'.format(pstr, i+1),
-            'Step.solve{0}{1}.Model.Beam.Enable = T\n'.format(pstr, i+1),
-            'Step.solve{0}{1}.Model.Beam.Mode = ARRAY_FACTOR\n'.format(pstr, i+1),
+            'Step.solve{0}{1}.Model.Beam.Enable = {2}\n'.format(pstr, i+1, beam_enable),
+            'Step.solve{0}{1}.Model.Beam.Mode = {2}\n'.format(pstr, i+1, beam_mode),
             'Step.solve{0}{1}.Model.Beam.UseChannelFreq = T\n'.format(pstr, i+1),
             'Step.solve{0}{1}.Model.DirectionalGain.Enable = T\n'.format(pstr, i+1),
             'Step.solve{0}{1}.Model.Phasors.Enable = T\n'.format(pstr, i+1)]
@@ -581,8 +595,8 @@ def make_peeling_parset(parset, peel_bins, scalar_phase=True, phase_only=True,
                 'Step.solvea{0}.Operation = SOLVE\n'.format(i+1),
                 'Step.solvea{0}.Model.Sources = '.format(i+1) + str(peel_bin['names']) + '\n',
                 'Step.solvea{0}.Model.Cache.Enable = T\n'.format(i+1),
-                'Step.solvea{0}.Model.Beam.Enable = T\n'.format(i+1),
-                'Step.solvea{0}.Model.Beam.Mode = ARRAY_FACTOR\n'.format(i+1),
+                'Step.solvea{0}.Model.Beam.Enable = {1}\n'.format(i+1, beam_enable),
+                'Step.solvea{0}.Model.Beam.Mode = {1}\n'.format(i+1), beam_mode,
                 'Step.solvea{0}.Model.Beam.UseChannelFreq = T\n'.format(i+1),
                 'Step.solvea{0}.Model.Phasors.Enable = T\n'.format(i+1),
                 'Step.solvea{0}.Solve.Mode = COMPLEX\n'.format(i+1),
@@ -607,12 +621,12 @@ def make_peeling_parset(parset, peel_bins, scalar_phase=True, phase_only=True,
             newlines += ['\n',
                 'Step.subtract{0}.Operation = SUBTRACT\n'.format(i+1),
                 'Step.subtract{0}.Model.Sources = '.format(i+1) + str(peel_bin['names']) + '\n',
-                'Step.subtract{0}.Model.Beam.Enable = T\n'.format(i+1)]
+                'Step.subtract{0}.Model.Beam.Enable = {1}\n'.format(i+1, beam_enable)]
             if scalar_phase:
                 newlines += ['Step.subtract{0}.Model.ScalarPhase.Enable = T\n'.format(i+1)]
             if not scalar_phase or not phase_only:
                 newlines += ['Step.subtract{0}.Model.DirectionalGain.Enable = T\n'.format(i+1)]
-            newlines += ['Step.subtract{0}.Model.Beam.Mode = ARRAY_FACTOR\n'.format(i+1),
+            newlines += ['Step.subtract{0}.Model.Beam.Mode = {1}\n'.format(i+1, beam_mode),
                 '\n']
 
     f = open(parset, 'w')
@@ -993,8 +1007,8 @@ if __name__=='__main__':
         'arguments are ignored', type='str', default=None)
     opt.add_option('-m', '--majcut', help='Maximum major axis size in '
         'arcmin for calibrators [default: %default]', type='float', default=None)
-    opt.add_option('-B', '--beam', help='Beam mode to use during peeling '
-        '[default: %default]', type='str', default='ARRAY_FACTOR')
+    opt.add_option('-B', '--beam', help='Beam mode to use during peeling. Use OFF '
+        'to disable the beam [default: %default]', type='str', default='ARRAY_FACTOR')
     opt.add_option('-b', '--nbands', help='Minimum number of bands that a '
         'calibrator must have to be used [default: %default]', type='int', default='8')
     opt.add_option('-a', '--navg', help='Number of frequency channels to '
