@@ -271,7 +271,7 @@ def find_calibrators(master_skymodel, beamMS, flux_cut_Jy=15.0,
     s.setColValues('ReferenceFrequency', np.array([60e6]*len(reffreqs)))
 
     # Now select only those sources above the given apparent flux cut
-    log.info('Filtering out sources with fluxes below {0} Jy:'.format(flux_cut_Jy))
+    log.info('Filtering out sources with apparent fluxes at obs. midpoint below {0} Jy:'.format(flux_cut_Jy))
     s.select(['I', '>', flux_cut_Jy, 'Jy'], applyBeam=True, aggregate='sum',
         force=True)
 
@@ -354,7 +354,7 @@ def setup_peeling(band):
     msname = band.file.split('/')[-1]
     make_peeling_parset('{0}/parsets/{1}.peeling.parset'.format(band.outdir,
         msname), peel_bins, scalar_phase=band.use_scalar_phase,
-        phase_only=band.phase_only, sol_int_amp=band.solint_amp)
+        phase_only=band.phase_only, sol_int_amp=band.solint_amp, beam_mode=band.beam_mode)
 
     create_peeling_skymodel(band.file, band.master_skymodel, radius=band.fwhm_deg*1.5,
         flux_cutoff_Jy=0.1, outdir=band.outdir,
@@ -539,7 +539,7 @@ def make_peeling_parset(parset, peel_bins, scalar_phase=True, phase_only=True,
     newlines += strategy_str
 
     # Handle beam
-    if beam_mode == 'OFF':
+    if beam_mode.lower() == 'off':
         beam_enable = 'F'
         beam_mode = 'DEFAULT'
     else:
