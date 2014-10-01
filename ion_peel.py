@@ -121,8 +121,10 @@ def create_peeling_skymodel(MS, gsm=None, radius=10, flux_cutoff_Jy=0.1, outdir=
         s = lsmtool.load(outfile)
 
     if use_patches:
-        # Use master_skymodel to define patches in band's sky model
-        s.transfer(master_skymodel)
+        # Use master_skymodel to define patches in band's sky model. If a source
+        # falls within 2 arcmin of a source in the master_skymodel, then the
+        # patch is transferred.
+        s.transfer(master_skymodel, matchBy='position', radius='2 arcmin')
         s.setPatchPositions(method='mid')
 
     s.write(outfile, clobber=True)
@@ -356,7 +358,7 @@ def setup_peeling(band):
         msname), peel_bins, scalar_phase=band.use_scalar_phase,
         phase_only=band.phase_only, sol_int_amp=band.solint_amp, beam_mode=band.beam_mode)
 
-    create_peeling_skymodel(band.file, band.master_skymodel, radius=band.fwhm_deg*1.5,
+    create_peeling_skymodel(band.file, band.skymodel, radius=band.fwhm_deg*1.5,
         flux_cutoff_Jy=0.1, outdir=band.outdir,
         master_skymodel=band.master_skymodel, use_patches=band.use_patches)
     band.do_peeling = True
@@ -442,7 +444,7 @@ def make_dirindep_parset(parset, scalar_phase=True, sol_int=1, beam_mode='DEFAUL
     """Makes a BBS parset for dir-independent calibration"""
 
     # Handle beam
-    if beam_mode == 'OFF':
+    if beam_mode.lower() == 'off':
         beam_enable = 'F'
         beam_mode = 'DEFAULT'
     else:
@@ -1002,9 +1004,13 @@ if __name__=='__main__':
         type='string', default='Peeled')
     opt.add_option('-f', '--fluxcut', help='Minimum apparent flux at 60 MHz in '
         'Jy for calibrators [default: %default]', type='float', default='15.0')
-    opt.add_option('-g', '--gsm', help='Global sky model BBS file, to use instead '
+    opt.add_option('-g', '--gsm', help='Global sky model file, to use instead '
         'of gsm.py [default: %default]; if given, the RA, Dec and radius '
         'arguments are ignored', type='str', default=None)
+    opt.add_option('-l', '--lsm', help='Use local sky model files instead '
+        'of the global sky model [default: %default]. Local sky models must be '
+        'named MS.skymodel and be in the input directory (e.g. SB50.MS.skymodel).',
+        type='str', default=None)
     opt.add_option('-m', '--majcut', help='Maximum major axis size in '
         'arcmin for calibrators [default: %default]', type='float', default=None)
     opt.add_option('-B', '--beam', help='Beam mode to use during peeling. Use OFF '
@@ -1247,6 +1253,11 @@ if __name__=='__main__':
         for band in band_list:
             # For each Band instance, set options
             band.master_skymodel = master_skymodel
+            if options.lsm:
+                skymodel = band.file + '.skymodel'
+                band.skymodel = skymodel
+            else:
+                band.skymodel = master_skymodel
             band.use_patches = options.patches
             band.beam_mode = options.beam
             band.do_peeling = True
