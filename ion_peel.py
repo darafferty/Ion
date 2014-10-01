@@ -1010,7 +1010,7 @@ if __name__=='__main__':
     opt.add_option('-l', '--lsm', help='Use local sky model files instead '
         'of the global sky model [default: %default]. Local sky models must be '
         'named MS.skymodel and be in the input directory (e.g. SB50.MS.skymodel).',
-        type='str', default=None)
+        action='store_true', default=False)
     opt.add_option('-m', '--majcut', help='Maximum major axis size in '
         'arcmin for calibrators [default: %default]', type='float', default=None)
     opt.add_option('-B', '--beam', help='Beam mode to use during peeling. Use OFF '
