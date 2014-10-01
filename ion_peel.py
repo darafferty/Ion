@@ -265,16 +265,17 @@ def find_calibrators(master_skymodel, beamMS, flux_cut_Jy=15.0,
         if len(s) == 0:
             return [], [], []
 
-    # Make sure all fluxes are at 60 MHz
-    reffreqs = s.getColValues('ReferenceFrequency')
-    fluxes =  s.getColValues('I')
-    try:
-        alphas = s.getColValues('SpectralIndex')[:, 0] # just use slope
-    except IndexError:
-        alphas = -0.8
-    fluxes_60 = fluxes*(60e6/reffreqs)**alphas
-    s.setColValues('I', fluxes_60)
-    s.setColValues('ReferenceFrequency', np.array([60e6]*len(reffreqs)))
+    # Make sure all fluxes are at 60 MHz (if possible)
+    if 'ReferenceFrequency' in s.getColNames():
+        reffreqs = s.getColValues('ReferenceFrequency')
+        fluxes =  s.getColValues('I')
+        try:
+            alphas = s.getColValues('SpectralIndex')[:, 0] # just use slope
+        except IndexError:
+            alphas = -0.8
+        fluxes_60 = fluxes*(60e6/reffreqs)**alphas
+        s.setColValues('I', fluxes_60)
+        s.setColValues('ReferenceFrequency', np.array([60e6]*len(reffreqs)))
 
     # Now select only those sources above the given apparent flux cut
     log.info('Filtering out sources with apparent fluxes at obs. midpoint below {0} Jy:'.format(flux_cut_Jy))
