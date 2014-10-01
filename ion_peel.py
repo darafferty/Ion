@@ -1139,6 +1139,7 @@ if __name__=='__main__':
             majcut_arcsec = None
         if options.beam.lower() == 'off':
             applyBeam = False
+            print('Beam is OFF, no beam attenuation done to sky model.')
         else:
             applyBeam = True
         cal_sets = []
