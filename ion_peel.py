@@ -254,6 +254,7 @@ def find_calibrators(master_skymodel, beamMS, flux_cut_Jy=15.0,
     """
     log.info('Checking {0}:'.format(beamMS))
     s = lsmtool.load(master_skymodel, beamMS=beamMS)
+
     if maj_cut_arcsec is not None:
         log.info('Filtering out sources larger than {0} arcsec:'.format(maj_cut_arcsec))
         if s.hasPatches:
@@ -292,9 +293,9 @@ def find_calibrators(master_skymodel, beamMS, flux_cut_Jy=15.0,
         else:
             cal_names = s.getColValues('Name').tolist()
             cal_sizes = s.getColValues('MajorAxis', units='arcsec').tolist()
-        return cal_names, cal_fluxes, cal_sizes
+        return cal_names, cal_fluxes, cal_sizes, s.hasPatches
     else:
-        return [], [], []
+        return [], [], [], False
 
 
 def setup_peeling(band):
@@ -1138,7 +1139,7 @@ if __name__=='__main__':
         cal_sets = []
         for field in field_list:
             for band in field.bands:
-                cal_names, cal_fluxes, cal_sizes = find_calibrators(master_skymodel,
+                cal_names, cal_fluxes, cal_sizes, hasPatches = find_calibrators(master_skymodel,
                     band.file, options.fluxcut, majcut_arcsec, plot=options.verbose)
                 if options.verbose:
                     prompt = "Press enter to continue or 'q' to quit... : "
@@ -1152,6 +1153,7 @@ if __name__=='__main__':
                 band.cal_apparent_fluxes = cal_fluxes
                 band.cal_sizes = cal_sizes
                 band.master_skymodel = master_skymodel
+                band.use_patches = hasPatches
 
         # Make a list of all calibrators and bands.
         cal_names = []
@@ -1261,7 +1263,6 @@ if __name__=='__main__':
                 band.skymodel = skymodel
             else:
                 band.skymodel = master_skymodel
-            band.use_patches = options.patches
             band.beam_mode = options.beam
             band.do_peeling = True
             band.nsrc_per_bin = 1
