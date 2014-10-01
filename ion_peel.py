@@ -290,7 +290,7 @@ def find_calibrators(master_skymodel, beamMS, flux_cut_Jy=15.0,
         if s.hasPatches:
             cal_names = s.getPatchNames().tolist()
             cal_sizes = s.getPatchSizes(units='arcsec', weight=True,
-                applyBeam=True).tolist()
+                applyBeam=applyBeam).tolist()
         else:
             cal_names = s.getColValues('Name').tolist()
             cal_sizes = s.getColValues('MajorAxis', units='arcsec').tolist()
