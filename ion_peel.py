@@ -245,7 +245,7 @@ def approx_equal(x, y, *args, **kwargs):
 
 
 def find_calibrators(master_skymodel, beamMS, flux_cut_Jy=15.0,
-    maj_cut_arcsec=None, plot=False):
+    maj_cut_arcsec=None, plot=False, applyBeam=True):
     """Returns list of optimal set of GSM calibrators for peeling
 
     Calibrators are determined as compact sources above the given apparent flux
@@ -258,7 +258,7 @@ def find_calibrators(master_skymodel, beamMS, flux_cut_Jy=15.0,
     if maj_cut_arcsec is not None:
         log.info('Filtering out sources larger than {0} arcsec:'.format(maj_cut_arcsec))
         if s.hasPatches:
-            sizes = s.getPatchSizes(units='arcsec', weight=True, applyBeam=True)
+            sizes = s.getPatchSizes(units='arcsec', weight=True, applyBeam=applyBeam)
         else:
             sizes = s.getColValues('MajorAxis', units='arcsec')
         s.select(sizes <= maj_cut_arcsec, force=True, aggregate=True)
@@ -279,14 +279,14 @@ def find_calibrators(master_skymodel, beamMS, flux_cut_Jy=15.0,
 
     # Now select only those sources above the given apparent flux cut
     log.info('Filtering out sources with apparent fluxes at obs. midpoint below {0} Jy:'.format(flux_cut_Jy))
-    s.select(['I', '>', flux_cut_Jy, 'Jy'], applyBeam=True, aggregate='sum',
+    s.select(['I', '>', flux_cut_Jy, 'Jy'], applyBeam=applyBeam, aggregate='sum',
         force=True)
 
     if len(s) > 0:
         if plot:
             print('Showing potential calibrators. Close the plot window to continue.')
             s.plot()
-        cal_fluxes = s.getColValues('I', aggregate='sum', applyBeam=True).tolist()
+        cal_fluxes = s.getColValues('I', aggregate='sum', applyBeam=applyBeam).tolist()
         if s.hasPatches:
             cal_names = s.getPatchNames().tolist()
             cal_sizes = s.getPatchSizes(units='arcsec', weight=True,
@@ -1137,11 +1137,15 @@ if __name__=='__main__':
             majcut_arcsec = options.majcut * 60.0
         else:
             majcut_arcsec = None
+        if options.beam.lower() == 'off':
+            applyBeam = False
+        else:
+            applyBeam = True
         cal_sets = []
         for field in field_list:
             for band in field.bands:
                 cal_names, cal_fluxes, cal_sizes, hasPatches = find_calibrators(master_skymodel,
-                    band.file, options.fluxcut, majcut_arcsec, plot=options.verbose)
+                    band.file, options.fluxcut, majcut_arcsec, plot=options.verbose, applyBeam=applyBeam)
                 if options.verbose:
                     prompt = "Press enter to continue or 'q' to quit... : "
                     answ = raw_input(prompt)
