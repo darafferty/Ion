@@ -245,7 +245,7 @@ def approx_equal(x, y, *args, **kwargs):
 
 
 def find_calibrators(master_skymodel, beamMS, flux_cut_Jy=15.0,
-    maj_cut_arcsec=None, plot=False, applyBeam=True):
+    maj_cut_arcsec=None, plot=False, applyBeam=True, band_skymodel=None):
     """Returns list of optimal set of GSM calibrators for peeling
 
     Calibrators are determined as compact sources above the given apparent flux
@@ -253,7 +253,13 @@ def find_calibrators(master_skymodel, beamMS, flux_cut_Jy=15.0,
     master_skymodel.
     """
     log.info('Checking {0}:'.format(beamMS))
-    s = lsmtool.load(master_skymodel, beamMS=beamMS)
+
+    if band_skymodel is None or band_skymodel == master_skymodel:
+        s = lsmtool.load(master_skymodel, beamMS=beamMS)
+    else:
+        s = lsmtool.load(band_skymodel, beamMS=beamMS)
+        s.transfer(master_skymodel, matchBy='position', radius='2 arcmin')
+        s.setPatchPositions(method='mid')
 
     if maj_cut_arcsec is not None:
         log.info('Filtering out sources larger than {0} arcsec:'.format(maj_cut_arcsec))
@@ -1150,15 +1156,9 @@ if __name__=='__main__':
                     band.skymodel = skymodel
                 else:
                     band.skymodel = master_skymodel
-                if applyBeam:
-                    # If beam is applied, use a single master sky model to determine
-                    # calibrators
-                    cal_names, cal_fluxes, cal_sizes, hasPatches = find_calibrators(master_skymodel,
-                        band.file, options.fluxcut, majcut_arcsec, plot=options.verbose, applyBeam=applyBeam)
-                else:
-                    # If no beam, use band sky models
-                    cal_names, cal_fluxes, cal_sizes, hasPatches = find_calibrators(band.skymodel,
-                        band.file, options.fluxcut, majcut_arcsec, plot=options.verbose, applyBeam=applyBeam)
+                cal_names, cal_fluxes, cal_sizes, hasPatches = find_calibrators(master_skymodel,
+                    band.file, options.fluxcut, majcut_arcsec, plot=options.verbose,
+                    applyBeam=applyBeam, band_skymodel=band.skymodel)
                 if options.verbose:
                     prompt = "Press enter to continue or 'q' to quit... : "
                     answ = raw_input(prompt)
