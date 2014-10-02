@@ -1139,14 +1139,26 @@ if __name__=='__main__':
             majcut_arcsec = None
         if options.beam.lower() == 'off':
             applyBeam = False
-            print('Beam is OFF, no beam attenuation done to sky model.')
         else:
             applyBeam = True
         cal_sets = []
         for field in field_list:
             for band in field.bands:
-                cal_names, cal_fluxes, cal_sizes, hasPatches = find_calibrators(master_skymodel,
-                    band.file, options.fluxcut, majcut_arcsec, plot=options.verbose, applyBeam=applyBeam)
+                band.master_skymodel = master_skymodel
+                if options.lsm:
+                    skymodel = band.file + '.skymodel'
+                    band.skymodel = skymodel
+                else:
+                    band.skymodel = master_skymodel
+                if applyBeam:
+                    # If beam is applied, use a single master sky model to determine
+                    # calibrators
+                    cal_names, cal_fluxes, cal_sizes, hasPatches = find_calibrators(master_skymodel,
+                        band.file, options.fluxcut, majcut_arcsec, plot=options.verbose, applyBeam=applyBeam)
+                else:
+                    # If no beam, use band sky models
+                    cal_names, cal_fluxes, cal_sizes, hasPatches = find_calibrators(band.skymodel,
+                        band.file, options.fluxcut, majcut_arcsec, plot=options.verbose, applyBeam=applyBeam)
                 if options.verbose:
                     prompt = "Press enter to continue or 'q' to quit... : "
                     answ = raw_input(prompt)
@@ -1263,12 +1275,6 @@ if __name__=='__main__':
                 freq_list.append(band.freq)
         for band in band_list:
             # For each Band instance, set options
-            band.master_skymodel = master_skymodel
-            if options.lsm:
-                skymodel = band.file + '.skymodel'
-                band.skymodel = skymodel
-            else:
-                band.skymodel = master_skymodel
             band.beam_mode = options.beam
             band.do_peeling = True
             band.nsrc_per_bin = 1
