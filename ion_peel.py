@@ -489,7 +489,7 @@ def make_dirindep_parset(parset, scalar_phase=True, sol_int=1, beam_mode='DEFAUL
     newlines += ['Step.solve.Solve.ExclParms = []\n',
         'Step.solve.Solve.CalibrationGroups = []\n',
         'Step.solve.Solve.CellSize.Freq = 0\n',
-        'Step.solve.Solve.CellSize.Time = {0}\n'.format(sol_int),
+        'Step.solve.Solve.CellSize.Time = {0}\n'.format(int(sol_int)),
         'Step.solve.Solve.CellChunkSize = 10\n',
         'Step.solve.Solve.PropagateSolutions = T\n',
         'Step.solve.Solve.Options.MaxIter = 150\n',
