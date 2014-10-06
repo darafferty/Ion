@@ -392,16 +392,6 @@ def peel_band(band):
     peelparset = "{0}/parsets/{1}.peeling.parset".format(band.outdir,
         msname)
 
-    # Perform dir-independent calibration if desired
-    if band.do_dirindep:
-        dirindep_parset = '{0}/parsets/{1}.dirindep.parset'.format(
-            band.outdir, msname)
-        make_dirindep_parset(dirindep_parset, scalar_phase=band.use_scalar_phase,
-            sol_int=band.solint_min)
-        subprocess.call("calibrate-stand-alone -f {0} {1} {2} > {3}/logs/"
-            "{4}_dirindep_calibrate.log 2>&1".format(msname, dirindep_parset,
-            skymodel, band.outdir, msname), shell=True)
-
     # Make a copy of the MS for peeling and average if desired
     newmsname = "{0}/{1}.peeled".format(band.outdir, msname)
     log.info('Performing averaging and peeling for {0}...\n'
@@ -422,6 +412,16 @@ def peel_band(band):
     f.close()
     subprocess.call("NDPPP {0} > {1}/logs/ndppp_avg_{2}.log 2>&1".format(p_shiftname,
         band.outdir, msname), shell=True)
+
+    # Perform dir-independent calibration if desired
+    if band.do_dirindep:
+        dirindep_parset = '{0}/parsets/{1}.dirindep.parset'.format(
+            band.outdir, msname)
+        make_dirindep_parset(dirindep_parset, scalar_phase=band.use_scalar_phase,
+            sol_int=band.solint_min, beam_mode=band.beam_mode)
+        subprocess.call("calibrate-stand-alone -f {0} {1} {2} > {3}/logs/"
+            "{4}_dirindep_calibrate.log 2>&1".format(msname, dirindep_parset,
+            skymodel, band.outdir, msname), shell=True)
 
     # Perform the peeling. Do this step even if time-correlated solutions
     # are desired so that the proper parmdb is made and so that the correlation
@@ -452,7 +452,10 @@ def peel_band(band):
 
 
 def make_dirindep_parset(parset, scalar_phase=True, sol_int=1, beam_mode='DEFAULT'):
-    """Makes a BBS parset for dir-independent calibration"""
+    """Makes a BBS parset for dir-independent calibration
+
+    Reads from and writes to DATA column
+    """
 
     # Handle beam
     if beam_mode.lower() == 'off':
@@ -503,7 +506,7 @@ def make_dirindep_parset(parset, scalar_phase=True, sol_int=1, beam_mode='DEFAUL
         'Step.correct.Model.CommonScalarPhase.Enable= T\n',
         'Step.correct.Model.Gain.Enable  = T\n',
         'Step.correct.Model.Beam.Enable  = F\n',
-        'Step.correct.Output.Column = CORRECTED_DATA\n']
+        'Step.correct.Output.Column = DATA\n']
     f = open(parset, 'w')
     f.writelines(newlines)
     f.close()
