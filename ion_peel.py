@@ -421,7 +421,7 @@ def peel_band(band):
             sol_int=band.solint_min, beam_mode=band.beam_mode)
         subprocess.call("calibrate-stand-alone -f {0} {1} {2} > {3}/logs/"
             "{4}_dirindep_calibrate.log 2>&1".format(msname, dirindep_parset,
-            skymodel, band.outdir, msname), shell=True)
+            skymodel, band.outdir, newmsname), shell=True)
 
     # Perform the peeling. Do this step even if time-correlated solutions
     # are desired so that the proper parmdb is made and so that the correlation
