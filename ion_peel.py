@@ -367,7 +367,8 @@ def setup_peeling(band):
     msname = band.file.split('/')[-1]
     make_peeling_parset('{0}/parsets/{1}.peeling.parset'.format(band.outdir,
         msname), peel_bins, scalar_phase=band.use_scalar_phase,
-        phase_only=band.phase_only, sol_int_amp=band.solint_amp, beam_mode=band.beam_mode)
+        phase_only=band.phase_only, sol_int_amp=band.solint_amp,
+        beam_mode=band.beam_mode, uvmin=band.uvmin)
 
     create_peeling_skymodel(band.file, band.skymodel, radius=band.fwhm_deg*1.5,
         flux_cutoff_Jy=0.1, outdir=band.outdir,
@@ -418,7 +419,7 @@ def peel_band(band):
         dirindep_parset = '{0}/parsets/{1}.dirindep.parset'.format(
             band.outdir, msname)
         make_dirindep_parset(dirindep_parset, scalar_phase=band.use_scalar_phase,
-            sol_int=band.solint_min, beam_mode=band.beam_mode)
+            sol_int=band.solint_min, beam_mode=band.beam_mode, uvmin=band.uvmin)
         subprocess.call("calibrate-stand-alone -f {0} {1} {2} > {3}/logs/"
             "{4}_dirindep_calibrate.log 2>&1".format(newmsname, dirindep_parset,
             skymodel, band.outdir, msname), shell=True)
@@ -443,7 +444,8 @@ def peel_band(band):
         # Make the parset and do the peeling
         make_peeling_parset(peelparset_timecorr, band.peel_bins,
             scalar_phase=band.use_scalar_phase, phase_only=True,
-            time_block=band.time_block, beam_mode=band.beam_mode)
+            time_block=band.time_block, beam_mode=band.beam_mode,
+            uvmin=band.uvmin)
         calibrate(newmsname, peelparset_timecorr, skymodel, msname,
             use_timecorr=True, outdir=band.outdir, instrument='instrument',
             time_block=band.time_block, ionfactor=band.ionfactor,
@@ -451,7 +453,8 @@ def peel_band(band):
             ncores=band.ncores_per_cal)
 
 
-def make_dirindep_parset(parset, scalar_phase=True, sol_int=1, beam_mode='DEFAULT'):
+def make_dirindep_parset(parset, scalar_phase=True, sol_int=1,
+    beam_mode='DEFAULT', uvmin=250.0):
     """Makes a BBS parset for dir-independent calibration
 
     Reads from and writes to DATA column
@@ -481,7 +484,7 @@ def make_dirindep_parset(parset, scalar_phase=True, sol_int=1, beam_mode='DEFAUL
         'Step.solve.Model.Beam.Mode = {0}\n'.format(beam_mode),
         'Step.solve.Model.Beam.UseChannelFreq = T\n',
         'Step.solve.Solve.Mode = COMPLEX\n',
-        'Step.solve.Solve.UVRange = [80]\n']
+        'Step.solve.Solve.UVRange = [{0}]\n'.format(uvmin)]
     if scalar_phase:
         newlines += ['Step.solve.Solve.Parms = ["CommonScalarPhase:*"]\n']
     else:
@@ -513,7 +516,7 @@ def make_dirindep_parset(parset, scalar_phase=True, sol_int=1, beam_mode='DEFAUL
 
 
 def make_peeling_parset(parset, peel_bins, scalar_phase=True, phase_only=True,
-    sol_int_amp=500, time_block=None, beam_mode='DEFAULT'):
+    sol_int_amp=500, time_block=None, beam_mode='DEFAULT', uvmin=250.0):
     """Makes a BBS parset for peeling
 
     For best results, the sources should be peeled in order of decreasing flux.
@@ -603,7 +606,7 @@ def make_peeling_parset(parset, peel_bins, scalar_phase=True, phase_only=True,
             'Step.solve{0}{1}.Solve.Options.LMFactor = 1.0\n'.format(pstr, i+1),
             'Step.solve{0}{1}.Solve.Options.BalancedEqs = F\n'.format(pstr, i+1),
             'Step.solve{0}{1}.Solve.Options.UseSVD = T\n'.format(pstr, i+1),
-            'Step.solve{0}{1}.Solve.UVRange = [80]\n'.format(pstr, i+1)]
+            'Step.solve{0}{1}.Solve.UVRange = [{2}]\n'.format(pstr, i+1, uvmin)]
 
         # Ampl-only solve
         if not phase_only and time_block is None:
@@ -630,7 +633,7 @@ def make_peeling_parset(parset, peel_bins, scalar_phase=True, phase_only=True,
                 'Step.solvea{0}.Solve.Options.LMFactor = 1.0\n'.format(i+1),
                 'Step.solvea{0}.Solve.Options.BalancedEqs = F\n'.format(i+1),
                 'Step.solvea{0}.Solve.Options.UseSVD = T\n'.format(i+1),
-                'Step.solvea{0}.Solve.UVRange = [80]\n'.format(i+1)]
+                'Step.solvea{0}.Solve.UVRange = [{1}]\n'.format(i+1, uvmin)]
 
         # Subtract sources in current bin
         if i < nbins - 1:
@@ -1046,6 +1049,8 @@ if __name__=='__main__':
         'patches (tesselate or cluster) [default: %default]', default='tessellate')
     opt.add_option('-x', '--fluxbin', help='Target flux per bin at 60 MHz in '
         'Jy for tesselation [default: %default]', type='float', default=10.0)
+    opt.add_option('-u', '--uvmin', help='UVmin to use during peeling in lambda '
+        '[default: %default]', type='float', default=250.0)
     opt.add_option('-N', '--numclusters', help='Number of clusters for clustering '
         '[default: %default]', type='float', default='20')
     opt.add_option('-t', '--timecorr', help='Use time-correlated solutions? '
@@ -1294,6 +1299,7 @@ if __name__=='__main__':
             band.do_each_cal_sep = False
             band.scale_solint = options.scale
             band.do_dirindep = options.dirindep
+            band.unmin = options.uvmin
             if band.use_timecorr and (np.remainder(band.time_block, 2) or
                 np.remainder(band.time_block, band.solint_min)):
                 log.warning('For best results, the number of time samples in a '
