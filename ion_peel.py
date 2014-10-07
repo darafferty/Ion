@@ -371,8 +371,8 @@ def setup_peeling(band):
         beam_mode=band.beam_mode, uvmin=band.uvmin)
 
     create_peeling_skymodel(band.file, band.skymodel, radius=band.fwhm_deg*1.5,
-        flux_cutoff_Jy=0.1, outdir=band.outdir,
-        master_skymodel=band.master_skymodel, use_patches=band.use_patches)
+        flux_cutoff_Jy=0.1, outdir=band.outdir, master_skymodel=band.master_skymodel,
+        use_patches=band.use_patches)
     band.do_peeling = True
     band.peel_bins = peel_bins
 
@@ -1299,7 +1299,7 @@ if __name__=='__main__':
             band.do_each_cal_sep = False
             band.scale_solint = options.scale
             band.do_dirindep = options.dirindep
-            band.unmin = options.uvmin
+            band.uvmin = options.uvmin
             if band.use_timecorr and (np.remainder(band.time_block, 2) or
                 np.remainder(band.time_block, band.solint_min)):
                 log.warning('For best results, the number of time samples in a '
