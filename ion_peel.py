@@ -1196,13 +1196,18 @@ if __name__=='__main__':
             logfilename = outdir + '/' + outfile + '.log'
             init_logger(logfilename, debug=options.verbose)
             log = logging.getLogger("Main")
-        elif not options.jug:
+        elif options.jug:
+            logfilename = outdir + '/' + outfile + '.log'
+            init_logger(logfilename, debug=options.verbose)
+            log = logging.getLogger("Main")
+        else:
             logfilename = outdir + '/' + outfile + '.log'
             init_logger(logfilename, debug=options.verbose)
             log = logging.getLogger("Main")
             log.error("The peeling results directory already exists! Please\n"
                 "rename/move/delete it, or set the clobber (-c) flag.")
             sys.exit()
+
         if not os.path.isdir(outdir+"/skymodels"):
             os.mkdir(outdir+"/skymodels")
         if not os.path.isdir(outdir+"/logs"):
