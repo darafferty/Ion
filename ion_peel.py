@@ -1423,7 +1423,7 @@ if __name__=='__main__':
                 setup_peeling(band)
         else:
             @TaskGenerator
-            def setup_peeling_jug(band_list)
+            def setup_peeling_jug(band_list):
                 for band in band_list:
                     setup_peeling(band)
             setup_peeling_jug(band_list)
