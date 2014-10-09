@@ -789,6 +789,9 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
             '      FWHM range: {7} - {8} (s)'.format(msname, timepersample,
             trows, blockl, tlen*3600.0, nsols, ionfactor, fwhm_min, fwhm_max))
 
+        # Update cellsize and chunk size of parset
+        update_parset(parset)
+
         # Make a copy of the master parmdb to store time-correlated solutions
         # in, resetting and flagging as needed
         os.system('rm -rf ' +instrument_out)
@@ -828,39 +831,104 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
             chunk_list.append(chunk_obj)
 
         # Split the dataset into parts
-        for chunk_obj in chunk_list:
-            split_ms(chunk_obj.dataset, chunk_obj.output, chunk_obj.t0, chunk_obj.t1)
+#         for chunk_obj in chunk_list:
+#             split_ms(chunk_obj.dataset, chunk_obj.output, chunk_obj.t0, chunk_obj.t1)
+#
+#         # Calibrate in parallel
+#         pool = multiprocessing.Pool(ncores)
+#         pool.map(calibrate_chunk, chunk_list)
+#         pool.close()
+#         pool.join()
+#
+#         # Copy over the solutions to the final parmdb
+#         pdb = lofar.parmdb.parmdb(instrument_out)
+#         parms = pdb.getValuesGrid("*")
+#         for chunk_obj in chunk_list:
+#             instrument_input = chunk_obj.output + '/instrument'
+#             pdb_part = lofar.parmdb.parmdb(instrument_input)
+#             parms_part = pdb_part.getValuesGrid("*")
+#             keynames = parms_part.keys()
+#             for key in keynames:
+#                 if 'Phase' in key:
+#                     tmp1=np.copy(parms[key]['values'][:,0])
+#                     tmp1[chunk_obj.solnum] = np.copy(parms_part[key]['values'][0,0])
+#                     parms[key]['values'][:,0] = tmp1
+#         os.system('rm -rf ' + instrument_out)
+#         lofar.expion.parmdbmain.store_parms(instrument_out, parms, create_new=True)
+#
+#         # Clean up
+#         for chunk_obj in chunk_list:
+#             os.system('rm -rf {0}*'.format(chunk_obj.output))
+#         os.system('rm calibrate-stand-alone*.log')
+#
+#         # Move the solutions to original parmdb
+#         subprocess.call('cp -r {0} {1}'.format(instrument_out, instrument_orig),
+#             shell=True)
 
-        # Calibrate in parallel
+
+        manager = multiprocessing.Manager()
         pool = multiprocessing.Pool(ncores)
-        pool.map(calibrate_chunk, chunk_list)
+        lock = manager.Lock()
+        for chunk_obj in chunk_list:
+            pool.apply_async(func=run_chunk, args=(chunk_obj,lock))
         pool.close()
         pool.join()
 
-        # Copy over the solutions to the final parmdb
-        pdb = lofar.parmdb.parmdb(instrument_out)
-        parms = pdb.getValuesGrid("*")
-        for chunk_obj in chunk_list:
-            instrument_input = chunk_obj.output + '/instrument'
-            pdb_part = lofar.parmdb.parmdb(instrument_input)
-            parms_part = pdb_part.getValuesGrid("*")
-            keynames = parms_part.keys()
-            for key in keynames:
-                if 'Phase' in key:
-                    tmp1=np.copy(parms[key]['values'][:,0])
-                    tmp1[chunk_obj.solnum] = np.copy(parms_part[key]['values'][0,0])
-                    parms[key]['values'][:,0] = tmp1
-        os.system('rm -rf ' + instrument_out)
-        lofar.expion.parmdbmain.store_parms(instrument_out, parms, create_new=True)
 
-        # Clean up
-        for chunk_obj in chunk_list:
-            os.system('rm -rf {0}*'.format(chunk_obj.output))
-        os.system('rm calibrate-stand-alone*.log')
+def run_chunk(chunk_obj, lock):
+    """
+    run time correlated calibration process for a single chunk.
+    1. split data
+    2. run bbs
+    3. copy solutions to final parmdb
+    4. clean directory of files created
+    """
 
-        # Move the solutions to original parmdb
-        subprocess.call('cp -r {0} {1}'.format(instrument_out, instrument_orig),
-            shell=True)
+    instrument_orig  = chunk_obj.dataset+'/instrument'
+    instrument_out = chunk_obj.dataset+'/instrument_out'
+
+    # Split the dataset into parts
+    split_ms(chunk_obj.dataset, chunk_obj.output, chunk_obj.t0, chunk_obj.t1)
+
+    # Calibrate
+    calibrate_chunk(chunk_obj)
+
+    # Copy over the solutions to the final parmdb
+    log.debug('run_chunk(): Copy sols, run lofar.parmdb.parmdb' + str(chunk_obj.solnum) + ' - ' + str(multiprocessing.current_process().name))
+    # Lock parmdb
+    lock.acquire()
+    log.debug('run_chunk(): Copy sols, lock ' + str(chunk_obj.solnum))
+    pdb = lofar.parmdb.parmdb(instrument_out)
+    parms = pdb.getValuesGrid("*")
+    parms_old = pdb.getValuesGrid("*")
+
+    instrument_input = chunk_obj.output + '/instrument'
+    pdb_part = lofar.parmdb.parmdb(instrument_input)
+    parms_part = pdb_part.getValuesGrid("*")
+    keynames = parms_part.keys()
+    log.debug('run_chunk(): Copy sols, run -for- loop' + str(chunk_obj.solnum))
+    # Replace old value with new
+    for key in keynames:
+	# Hard-coded to look for Phase and/or TEC parms
+	# Presumably OK to use other parms with additional 'or' statments
+        if 'Phase' in key or 'TEC' in key:
+            tmp1=np.copy(parms[key]['values'][:,0])
+            tmp1[chunk_obj.solnum] = np.copy(parms_part[key]['values'][0,0])
+            parms[key]['values'][:,0] = tmp1
+    log.debug('run_chunk(): Copy sols, end -for- loop' + str(chunk_obj.solnum))
+
+    # Remove previous parmdb values
+    for line in parms_old:
+        pdb.deleteValues(line)
+    # Add new values
+    pdb.addValues(parms)
+    log.debug('run_chunk(): Copy sols, unlock ' + str(chunk_obj.solnum))
+    lock.release()
+
+    # Clean up
+    log.debug('run_chunk(): Clean up...')
+    os.system('rm -rf {0}*'.format(chunk_obj.output))
+    os.system('rm calibrate-stand-alone*.log')
 
 
 def calibrate_chunk(chunk_obj):
@@ -895,7 +963,8 @@ def clean_and_copy_parmdb(instrument_name, instrument_out, blockl,
             tmp1 = np.copy(parms[key]['values'][filler-1:-filler-2,0])
             tmp1 = tmp1*0.0
             parms[key]['values'][filler-1:-filler-2,0] = tmp1
-    lofar.expion.parmdbmain.store_parms(instrument_out, parms, create_new=True)
+    pdb_out = lofar.parmdb.parmdb(instrument_out, create=True)
+    pdb_out.addValues(parms)
 
     if flag_filler:
         # Flag data for times that won't be filled with time-correlated solutions
@@ -919,6 +988,27 @@ def clean_and_copy_parmdb(instrument_name, instrument_out, blockl,
         tabStationSelection.putcol("FLAG", numpy.ones((filler, 4), dtype=bool))
         tabStationSelection.close()
         ms.close()
+
+
+def update_parset(parset):
+    """
+    Update the parset to set cellsize and chunksize = 0
+    where a value of 0 forces all time/freq/cell intervals to be considered
+    """
+    log.info('Beginning update_parset()...')
+
+    f = open(parset, 'r')
+    newlines = f.readlines()
+    f.close()
+    for i in range(0, len(newlines)):
+	if 'ChunkSize' in newlines[i] or 'CellSize.Time' in newlines[i]:
+	    log.debug('update_parset(): Updated a line in the parset')
+	    vars = newlines[i].split()
+	    #newlines[i] = vars[0]+' '+vars[1]+' '+str(blockl)+'\n'
+	    newlines[i] = vars[0]+' '+vars[1]+' 0\n'
+    f = open(parset,'w')
+    f.writelines(newlines)
+    f.close()
 
 
 def split_ms(msin, msout, start_out, end_out):
