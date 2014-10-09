@@ -111,6 +111,9 @@ def create_peeling_skymodel(MS, gsm=None, radius=10, flux_cutoff_Jy=0.1, outdir=
     """
     ms = MS.split("/")[-1]
     outfile = "{0}/skymodels/{1}.peeling.skymodel".format(outdir, ms)
+    if os.path.exists(outfile):
+        return
+
     if gsm is not None:
         s = lsmtool.load(gsm)
     else:
@@ -527,6 +530,8 @@ def make_peeling_parset(parset, peel_bins, scalar_phase=True, phase_only=True,
     For best results, the sources should be peeled in order of decreasing flux.
     If phase_only is False, amplitudes are also solved for.
     """
+    if os.path.exists(parset):
+        return
     sol_int_list = []
     if time_block is not None:
         # Set all chunk sizes to time_block
@@ -1418,15 +1423,8 @@ if __name__=='__main__':
                     'solution interval')
 
         # Setup peeling
-        if not has_jug or not options.jug:
-            for band in band_list:
-                setup_peeling(band)
-        else:
-            @TaskGenerator
-            def setup_peeling_jug(band_list):
-                for band in band_list:
-                    setup_peeling(band)
-            setup_peeling_jug(band_list)
+        for band in band_list:
+            setup_peeling(band)
 
         # Perform peeling for each band. The peel_band script will split up the
         # calibrators for each band into sets for peeling.
