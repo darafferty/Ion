@@ -1196,14 +1196,14 @@ if __name__=='__main__':
         opt.print_help()
     else:
         if len(args) == 0:
-            try:
+#             try:
                 sky_ra = float(options.sky_ra)
                 sky_dec = float(options.sky_dec)
                 sky_radius = float(options.sky_radius)
                 outfile = options.outfile
-            except:
-                opt.print_help()
-                sys.exit()
+#             except:
+#                 opt.print_help()
+#                 sys.exit()
         sky_ra = float(args[0])
         sky_dec = float(args[1])
         sky_radius = float(args[2])
