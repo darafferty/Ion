@@ -1418,8 +1418,15 @@ if __name__=='__main__':
                     'solution interval')
 
         # Setup peeling
-        for band in band_list:
-            setup_peeling(band)
+        if not has_jug or not options.jug:
+            for band in band_list:
+                setup_peeling(band)
+        else:
+            @TaskGenerator
+            def setup_peeling_jug(band_list)
+                for band in band_list:
+                    setup_peeling(band)
+            setup_peeling_jug(band_list)
 
         # Perform peeling for each band. The peel_band script will split up the
         # calibrators for each band into sets for peeling.
@@ -1435,8 +1442,8 @@ if __name__=='__main__':
             else:
                 @TaskGenerator
                 def peel_band_jug(band_list):
-                    peel_band(band)
-
+                    for band in band_list:
+                        peel_band(band)
                 peel_band_jug(band_list)
 
             # Write all the solutions to an H5parm file for later use in LoSoTo.
