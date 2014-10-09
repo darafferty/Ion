@@ -1427,7 +1427,7 @@ if __name__=='__main__':
                 pool.join()
             else:
                 @TaskGenerator
-                def peel_band_jug(band_list)
+                def peel_band_jug(band_list):
                     peel_band(band)
 
                 peel_band_jug(band_list)
