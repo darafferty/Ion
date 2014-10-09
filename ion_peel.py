@@ -1192,22 +1192,23 @@ if __name__=='__main__':
         (options, args) = opt.parse_args()
 
     # Get inputs
-    if len(args) != 4 or len(args) != 0:
+    if len(args) != 4 and len(args) != 0:
         opt.print_help()
     else:
         if len(args) == 0:
-#             try:
+            try:
                 sky_ra = float(options.sky_ra)
                 sky_dec = float(options.sky_dec)
                 sky_radius = float(options.sky_radius)
                 outfile = options.outfile
-#             except:
-#                 opt.print_help()
-#                 sys.exit()
-        sky_ra = float(args[0])
-        sky_dec = float(args[1])
-        sky_radius = float(args[2])
-        outfile = args[3]
+            except:
+                opt.print_help()
+                sys.exit()
+        else:
+            sky_ra = float(args[0])
+            sky_dec = float(args[1])
+            sky_radius = float(args[2])
+            outfile = args[3]
 
         # Set up output directories and initialize logging
         outdir = options.outdir
