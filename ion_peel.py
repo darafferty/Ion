@@ -1265,6 +1265,8 @@ if __name__=='__main__':
                 band.master_skymodel = master_skymodel
                 if options.lsm:
                     skymodel = band.file + '.skymodel'
+                    if not os.exists(skymodel):
+                        skymodel = band.file.split('.')[0] + '.skymodel'
                     band.skymodel = skymodel
                 else:
                     band.skymodel = master_skymodel
