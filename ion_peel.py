@@ -1401,7 +1401,7 @@ if __name__=='__main__':
             band.time_block = 60 # number of time samples in a block
             band.flag_filler = False # flag filler solutions
             band.ionfactor = options.ionfactor
-            band.ncores_per_cal = 4
+            band.ncores_per_cal = 3
             band.do_each_cal_sep = False
             band.scale_solint = options.scale
             band.do_dirindep = options.dirindep
