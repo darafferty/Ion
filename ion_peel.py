@@ -45,6 +45,11 @@ from numpy import argmax, argmin, mean, abs
 from numpy import int32 as Nint
 from numpy import float32 as Nfloat
 import copy
+try:
+    from jug import TaskGenerator
+    has_jug = True
+except ImportError:
+    has_jug = False
 _version = '1.0'
 
 
@@ -1001,6 +1006,10 @@ class Band(object):
         self.name = str(self.freq)
 
 
+    def __jug_hash__(self):
+        return self.msname
+
+
 class Chunk(object):
     """The Chunk object contains parameters for time-correlated calibration
     (most of which are set later during calibration).
@@ -1069,6 +1078,8 @@ if __name__=='__main__':
         'solint*(fluxMax/flux)^2 [default: %default]', action='store_true', default=False)
     opt.add_option('-F', '--flag', help='Flag outliers in peeling solutions? '
         '[default: %default]', action='store_true', default=False)
+    opt.add_option('-j', '--jug', help='Use jug? '
+        '[default: %default]', action='store_true', default=False)
     opt.add_option('-c', '--clobber', help='Clobber existing output files? '
         '[default: %default]', action='store_true', default=False)
     (options, args) = opt.parse_args()
@@ -1095,7 +1106,7 @@ if __name__=='__main__':
             logfilename = outdir + '/' + outfile + '.log'
             init_logger(logfilename, debug=options.verbose)
             log = logging.getLogger("Main")
-        else:
+        elif not options.jug:
             logfilename = outdir + '/' + outfile + '.log'
             init_logger(logfilename, debug=options.verbose)
             log = logging.getLogger("Main")
@@ -1129,8 +1140,11 @@ if __name__=='__main__':
             master_skymodel = options.gsm
         else:
             master_skymodel = outdir + '/skymodels/potential_calibrators.skymodel'
-            subprocess.call("gsm.py {0} {1} {2} {3} {4} 2>/dev/null".format(master_skymodel,
-                sky_ra, sky_dec, sky_radius, options.fluxcut/10.0), shell=True)
+            if os.exists(master_skymodel) and options.jug:
+                pass
+            else:
+                subprocess.call("gsm.py {0} {1} {2} {3} {4} 2>/dev/null".format(master_skymodel,
+                    sky_ra, sky_dec, sky_radius, options.fluxcut/10.0), shell=True)
 
         if options.patches:
             log.info('  Tessellating the sky model...')
@@ -1316,10 +1330,17 @@ if __name__=='__main__':
             if not band.do_peeling:
                 band_list.remove(band)
         if not options.dryrun:
-            pool = MyPool(options.ncores)
-            pool.map(peel_band, band_list)
-            pool.close()
-            pool.join()
+            if not has_jug or not options.jug:
+                pool = MyPool(options.ncores)
+                pool.map(peel_band, band_list)
+                pool.close()
+                pool.join()
+            else:
+                @TaskGenerator
+                def peel_band_jug(band_list)
+                    peel_band(band)
+
+                peel_band_jug(band_list)
 
             # Write all the solutions to an H5parm file for later use in LoSoTo.
             write_sols(field_list, outdir+'/'+outfile, flag_outliers=options.flag)
