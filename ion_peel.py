@@ -1186,8 +1186,7 @@ if __name__=='__main__':
         cfg.add_option('sky_radius')
         cfg.add_option('outfile')
         cfg.add_file('ion_peel.ini')
-        options = cfg.parse()
-        args = []
+        (options, args) = cfg.parse(opt)
     except ImportError:
         (options, args) = opt.parse_args()
 
