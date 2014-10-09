@@ -1177,12 +1177,32 @@ if __name__=='__main__':
         '[default: %default]', action='store_true', default=False)
     opt.add_option('-c', '--clobber', help='Clobber existing output files? '
         '[default: %default]', action='store_true', default=False)
-    (options, args) = opt.parse_args()
+    try:
+        import cfgparse
+        cfg = cfgparse.ConfigParser()
+        cfg.add_optparse_help_option(opt)
+        cfg.add_option('sky_ra')
+        cfg.add_option('sky_dec')
+        cfg.add_option('sky_radius')
+        cfg.add_option('outfile')
+        cfg.add_file('ion_peel.ini')
+        (options, args) = cfg.parse()
+    except ImportError:
+        (options, args) = opt.parse_args()
 
     # Get inputs
-    if len(args) != 4:
+    if len(args) != 4 or len(args) != 0:
         opt.print_help()
     else:
+        if len(args) == 0:
+            try:
+                sky_ra = float(options.sky_ra)
+                sky_dec = float(options.sky_dec)
+                sky_radius = float(options.sky_radius)
+                outfile = options.outfile
+            except:
+                opt.print_help()
+                sys.exit()
         sky_ra = float(args[0])
         sky_dec = float(args[1])
         sky_radius = float(args[2])
