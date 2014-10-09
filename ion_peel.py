@@ -46,7 +46,7 @@ from numpy import int32 as Nint
 from numpy import float32 as Nfloat
 import copy
 try:
-    from jug import TaskGenerator, barrier
+    from jug import Task
     has_jug = True
 except ImportError:
     has_jug = False
@@ -1437,24 +1437,16 @@ if __name__=='__main__':
                 pool.map(peel_band, band_list)
                 pool.close()
                 pool.join()
+
                 # Write all the solutions to an H5parm file for later use in LoSoTo.
                 write_sols(field_list, outdir+'/'+outfile, flag_outliers=options.flag)
                 log.info('Peeling complete.')
             else:
-                @TaskGenerator
-                def peel_band_jug(band_list):
-                    for band in band_list:
-                        peel_band(band)
-                peel_band_jug(band_list)
+                for band in band_list:
+                    Task(peel_band, band)
 
                 # Write all the solutions to an H5parm file for later use in LoSoTo.
-                barrier()
-                @TaskGenerator
-                def write_sols_jug(inlist):
-                    for item in inlist:
-                        field_list, outfile, flag_outliers = item
-                        write_sols(field_list, outfile, flag_outliers)
-                write_sols_jug([(field_list, outdir+'/'+outfile, options.flag)])
+                Task(write_sols, field_list, outdir+'/'+outfile, options.flag)
                 log.info('Peeling complete.')
         else:
             log.info('Dry-run flag (-d) was set. No peeling done.')
