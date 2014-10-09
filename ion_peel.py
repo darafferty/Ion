@@ -46,7 +46,7 @@ from numpy import int32 as Nint
 from numpy import float32 as Nfloat
 import copy
 try:
-    from jug import TaskGenerator
+    from jug import TaskGenerator, barrier
     has_jug = True
 except ImportError:
     has_jug = False
