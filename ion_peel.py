@@ -1261,6 +1261,12 @@ if __name__=='__main__':
                 "rename/move/delete it, or set the clobber (-c) flag.")
                 sys.exit()
 
+        if has_jug:
+            jug_dir = outdir + '/' + 'temp'
+            if os.path.exists(jug_dir):
+                subprocess.call("rm -rf {0}".format(jug_dir), shell=True)
+            jug.set_jugdir(outdir + '/' + 'temp')
+
         # Scan the directories to determine fields.
         field_list = scan_directory(options.indir, outdir)
         if len(field_list) == 0:
