@@ -46,7 +46,7 @@ from numpy import int32 as Nint
 from numpy import float32 as Nfloat
 import copy
 try:
-    from jug import Task
+    from jug import Task, set_jugdir
     has_jug = True
 except ImportError:
     has_jug = False
@@ -1265,7 +1265,7 @@ if __name__=='__main__':
             jug_dir = outdir + '/' + 'temp'
             if os.path.exists(jug_dir):
                 subprocess.call("rm -rf {0}".format(jug_dir), shell=True)
-            jug.set_jugdir(outdir + '/' + 'temp')
+            set_jugdir(outdir + '/' + 'temp')
 
         # Scan the directories to determine fields.
         field_list = scan_directory(options.indir, outdir)
