@@ -22,6 +22,27 @@ All the measurement sets are assumed to be a single directory (defined by the
 Direction-independent selfcal solutions must have been applied to the
 CORRECTED_DATA column of all MS files before running this script.
 
+The script supports running over multiple nodes using IPython and PBS. To run
+in this way, make a PBS script and run it with qsub as follows:
+
+run_peel.pbs:
+
+    #!/bin/bash
+    #PBS -N peeling_10SB
+    #PBS -l walltime=100:00:00
+    #PBS -l nodes=10:ppn=1,pmem=28gb
+    #PBS -j oe
+    #PBS -o output-$PBS_JOBNAME-$PBS_JOBID
+    #PBS -m bea
+    #PBS -M drafferty@hs.uni-hamburg.de
+
+    cd $PBS_O_WORKDIR
+    python ion_peel.py 90.80229 42.28977 10 peeled_10SB.h5 -n 1
+
+Run with:
+
+    $ qsub run_peel.pbs
+
 """
 import logging
 import os
@@ -39,17 +60,18 @@ import lofar.parmdb
 import lofar.expion.parmdbmain
 import multiprocessing
 import multiprocessing.pool
+try:
+    from IPython.parallel import Client
+    import loadbalance
+    has_ipy_parallel = True
+except ImportError:
+    has_ipy_parallel = False
 import lsmtool
 from numpy import sum, sqrt, min, max, any
 from numpy import argmax, argmin, mean, abs
 from numpy import int32 as Nint
 from numpy import float32 as Nfloat
 import copy
-try:
-    from jug import Task, set_jugdir
-    has_jug = True
-except ImportError:
-    has_jug = False
 _version = '1.0'
 
 
@@ -870,17 +892,15 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
 #         subprocess.call('cp -r {0} {1}'.format(instrument_out, instrument_orig),
 #             shell=True)
 
-
         manager = multiprocessing.Manager()
         pool = multiprocessing.Pool(ncores)
-        lock = manager.Lock()
         for chunk_obj in chunk_list:
-            pool.apply_async(func=run_chunk, args=(chunk_obj,lock))
+            pool.apply_async(func=run_chunk, args=(chunk_obj))
         pool.close()
         pool.join()
 
 
-def run_chunk(chunk_obj, lock):
+def run_chunk(chunk_obj):
     """
     run time correlated calibration process for a single chunk.
     1. split data
@@ -899,11 +919,9 @@ def run_chunk(chunk_obj, lock):
     calibrate_chunk(chunk_obj)
 
     # Copy over the solutions to the final parmdb
-    log.debug('run_chunk(): Copy sols, run lofar.parmdb.parmdb' + str(chunk_obj.solnum) + ' - ' + str(multiprocessing.current_process().name))
     # Lock parmdb
-    lock.acquire()
-    log.debug('run_chunk(): Copy sols, lock ' + str(chunk_obj.solnum))
     pdb = lofar.parmdb.parmdb(instrument_out)
+    pdb.lock()
     parms = pdb.getValuesGrid("*")
     parms_old = pdb.getValuesGrid("*")
 
@@ -911,7 +929,7 @@ def run_chunk(chunk_obj, lock):
     pdb_part = lofar.parmdb.parmdb(instrument_input)
     parms_part = pdb_part.getValuesGrid("*")
     keynames = parms_part.keys()
-    log.debug('run_chunk(): Copy sols, run -for- loop' + str(chunk_obj.solnum))
+
     # Replace old value with new
     for key in keynames:
 	# Hard-coded to look for Phase and/or TEC parms
@@ -925,10 +943,11 @@ def run_chunk(chunk_obj, lock):
     # Remove previous parmdb values
     for line in parms_old:
         pdb.deleteValues(line)
+
     # Add new values
     pdb.addValues(parms)
     log.debug('run_chunk(): Copy sols, unlock ' + str(chunk_obj.solnum))
-    lock.release()
+    pdb.unlock()
 
     # Clean up
     log.debug('run_chunk(): Clean up...')
@@ -1101,10 +1120,6 @@ class Band(object):
         self.name = str(self.freq)
 
 
-    def __jug_hash__(self):
-        return self.msname
-
-
 class Chunk(object):
     """The Chunk object contains parameters for time-correlated calibration
     (most of which are set later during calibration).
@@ -1173,7 +1188,7 @@ if __name__=='__main__':
         'solint*(fluxMax/flux)^2 [default: %default]', action='store_true', default=False)
     opt.add_option('-F', '--flag', help='Flag outliers in peeling solutions? '
         '[default: %default]', action='store_true', default=False)
-    opt.add_option('-j', '--jug', help='Use jug? '
+    opt.add_option('-T', '--torque', help='Use torque? '
         '[default: %default]', action='store_true', default=False)
     opt.add_option('-c', '--clobber', help='Clobber existing output files? '
         '[default: %default]', action='store_true', default=False)
@@ -1197,7 +1212,6 @@ if __name__=='__main__':
         cfg.add_option('majcut')
         cfg.add_option('beam')
         cfg.add_option('timecorr')
-        cfg.add_option('jug')
         cfg.add_file('ion_peel.ini')
         (options, args) = cfg.parse(opt)
     except ImportError:
@@ -1235,10 +1249,6 @@ if __name__=='__main__':
             logfilename = outdir + '/' + outfile + '.log'
             init_logger(logfilename, debug=options.verbose)
             log = logging.getLogger("Main")
-        elif options.jug:
-            logfilename = outdir + '/' + outfile + '.log'
-            init_logger(logfilename, debug=options.verbose)
-            log = logging.getLogger("Main")
         else:
             logfilename = outdir + '/' + outfile + '.log'
             init_logger(logfilename, debug=options.verbose)
@@ -1261,12 +1271,6 @@ if __name__=='__main__':
                 "rename/move/delete it, or set the clobber (-c) flag.")
                 sys.exit()
 
-        if has_jug:
-            jug_dir = outdir + '/' + 'temp'
-            if os.path.exists(jug_dir):
-                subprocess.call("rm -rf {0}".format(jug_dir), shell=True)
-            set_jugdir(outdir + '/' + 'temp')
-
         # Scan the directories to determine fields.
         field_list = scan_directory(options.indir, outdir)
         if len(field_list) == 0:
@@ -1280,11 +1284,8 @@ if __name__=='__main__':
             master_skymodel = options.gsm
         else:
             master_skymodel = outdir + '/skymodels/potential_calibrators.skymodel'
-            if os.exists(master_skymodel) and options.jug:
-                pass
-            else:
-                subprocess.call("gsm.py {0} {1} {2} {3} {4} 2>/dev/null".format(master_skymodel,
-                    sky_ra, sky_dec, sky_radius, options.fluxcut/10.0), shell=True)
+            subprocess.call("gsm.py {0} {1} {2} {3} {4} 2>/dev/null".format(master_skymodel,
+                sky_ra, sky_dec, sky_radius, options.fluxcut/10.0), shell=True)
 
         if options.patches:
             log.info('  Tessellating the sky model...')
@@ -1472,22 +1473,20 @@ if __name__=='__main__':
             if not band.do_peeling:
                 band_list.remove(band)
         if not options.dryrun:
-            if not has_jug or not options.jug:
+            if has_ipy_parallel and options.torque:
+                lb = loadbalance.LoadBalance(ppn=options.ncores)
+                lb.set_retries(5)
+                lb.lview.map(peel_band, band_list)
+            else:
                 pool = MyPool(options.ncores)
                 pool.map(peel_band, band_list)
                 pool.close()
                 pool.join()
 
-                # Write all the solutions to an H5parm file for later use in LoSoTo.
-                write_sols(field_list, outdir+'/'+outfile, flag_outliers=options.flag)
-                log.info('Peeling complete.')
-            else:
-                for band in band_list:
-                    Task(peel_band, band)
+            # Write all the solutions to an H5parm file for later use in LoSoTo.
+            write_sols(field_list, outdir+'/'+outfile, flag_outliers=options.flag)
+            log.info('Peeling complete.')
 
-                # Write all the solutions to an H5parm file for later use in LoSoTo.
-                Task(write_sols, field_list, outdir+'/'+outfile, options.flag)
-                log.info('Peeling complete.')
         else:
             log.info('Dry-run flag (-d) was set. No peeling done.')
 
