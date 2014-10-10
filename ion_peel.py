@@ -1192,30 +1192,30 @@ if __name__=='__main__':
         '[default: %default]', action='store_true', default=False)
     opt.add_option('-c', '--clobber', help='Clobber existing output files? '
         '[default: %default]', action='store_true', default=False)
-    try:
-        import cfgparse
-        cfg = cfgparse.ConfigParser()
-        cfg.add_optparse_help_option(opt)
-        cfg.add_option('sky_ra')
-        cfg.add_option('sky_dec')
-        cfg.add_option('sky_radius')
-        cfg.add_option('outfile')
-        cfg.add_option('indir')
-        cfg.add_option('outdir')
-        cfg.add_option('nbands')
-        cfg.add_option('ncores')
-        cfg.add_option('navg')
-        cfg.add_option('lsm')
-        cfg.add_option('gsm')
-        cfg.add_option('fluxcut')
-        cfg.add_option('solint')
-        cfg.add_option('majcut')
-        cfg.add_option('beam')
-        cfg.add_option('timecorr')
-        cfg.add_file('ion_peel.ini')
-        (options, args) = cfg.parse(opt)
-    except ImportError:
-        (options, args) = opt.parse_args()
+#     try:
+#         import cfgparse
+#         cfg = cfgparse.ConfigParser()
+#         cfg.add_optparse_help_option(opt)
+#         cfg.add_option('sky_ra')
+#         cfg.add_option('sky_dec')
+#         cfg.add_option('sky_radius')
+#         cfg.add_option('outfile')
+#         cfg.add_option('indir')
+#         cfg.add_option('outdir')
+#         cfg.add_option('nbands')
+#         cfg.add_option('ncores')
+#         cfg.add_option('navg')
+#         cfg.add_option('lsm')
+#         cfg.add_option('gsm')
+#         cfg.add_option('fluxcut')
+#         cfg.add_option('solint')
+#         cfg.add_option('majcut')
+#         cfg.add_option('beam')
+#         cfg.add_option('timecorr')
+#         cfg.add_file('ion_peel.ini')
+#         (options, args) = cfg.parse(opt)
+#     except ImportError:
+    (options, args) = opt.parse_args()
 
     # Get inputs
     if len(args) != 4 and len(args) != 0:
