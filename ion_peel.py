@@ -1213,7 +1213,6 @@ if __name__=='__main__':
                 sky_dec = float(options.sky_dec)
                 sky_radius = float(options.sky_radius)
                 outfile = options.outfile
-                print(sky_ra, outfile)
             except:
                 opt.print_help()
                 sys.exit()
@@ -1225,6 +1224,7 @@ if __name__=='__main__':
 
         # Set up output directories and initialize logging
         outdir = options.outdir
+        print(outdir)
         if not os.path.isdir(outdir):
             os.mkdir(outdir)
             logfilename = outdir + '/' + outfile + '.log'
