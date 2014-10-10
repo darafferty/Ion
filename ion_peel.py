@@ -1224,7 +1224,7 @@ if __name__=='__main__':
 
         # Set up output directories and initialize logging
         outdir = options.outdir
-        print(outdir)
+        0/0
         if not os.path.isdir(outdir):
             os.mkdir(outdir)
             logfilename = outdir + '/' + outfile + '.log'
