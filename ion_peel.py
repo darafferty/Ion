@@ -1213,6 +1213,7 @@ if __name__=='__main__':
                 sky_dec = float(options.sky_dec)
                 sky_radius = float(options.sky_radius)
                 outfile = options.outfile
+                print(sky_ra, outfile)
             except:
                 opt.print_help()
                 sys.exit()
