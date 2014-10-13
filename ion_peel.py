@@ -1478,7 +1478,13 @@ if __name__=='__main__':
                 lb.set_retries(5)
                 dview = lb.rc[:]
                 dview.execute('from Ion.ion_peel import *')
-                lb.lview.map(peel_band, band_list)
+                band_list_named = []
+                for i, band in enumerate(band_list):
+                    exec 'band{0} = band'.format(i)
+                    exec 'band_list_named.append(band{0})'.format(i)
+                    dview['band{0}'.format(i)] = band
+                lb.lview.map(peel_band, band_list_named)
+#                 dview.map(peel_band, band_list)
             else:
                 pool = MyPool(options.ncores)
                 pool.map(peel_band, band_list)
