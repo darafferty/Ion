@@ -61,7 +61,6 @@ import lofar.expion.parmdbmain
 import multiprocessing
 import multiprocessing.pool
 try:
-    from IPython.parallel import Client
     import loadbalance
     has_ipy_parallel = True
 except ImportError:
@@ -1474,8 +1473,11 @@ if __name__=='__main__':
                 band_list.remove(band)
         if not options.dryrun:
             if has_ipy_parallel and options.torque:
+                log.info('Distributing peeling over PBS nodes...')
                 lb = loadbalance.LoadBalance(ppn=options.ncores)
                 lb.set_retries(5)
+                dview = lb.rc[:]
+                dview.execute('from Ion.ion_peel import peel_band')
                 lb.lview.map(peel_band, band_list)
             else:
                 pool = MyPool(options.ncores)
