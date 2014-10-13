@@ -1477,7 +1477,7 @@ if __name__=='__main__':
                 lb = loadbalance.LoadBalance(ppn=options.ncores)
                 lb.set_retries(5)
                 dview = lb.rc[:]
-                dview.execute('from Ion.ion_peel import peel_band')
+                dview.execute('from Ion.ion_peel import *')
                 lb.lview.map(peel_band, band_list)
             else:
                 pool = MyPool(options.ncores)
