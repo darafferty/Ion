@@ -387,7 +387,9 @@ if __name__=='__main__':
         if not options.dryrun:
             if has_ipy_parallel and options.torque:
                 log.info('Distributing peeling over PBS nodes...')
-                lb = loadbalance.LoadBalance(ppn=options.ncores)
+                lb = loadbalance.LoadBalance(ppn=1)
+                for band in band_list:
+                    band.ncores_per_cal = options.ncores
                 lb.set_retries(5)
                 dview = lb.rc[:]
                 dview.execute('from Ion.ion_libs import *')
