@@ -62,6 +62,7 @@ import multiprocessing
 import multiprocessing.pool
 try:
     import loadbalance
+    from IPython.parallel import interactive
     has_ipy_parallel = True
 except ImportError:
     has_ipy_parallel = False
@@ -406,6 +407,7 @@ def setup_peeling(band):
     band.peel_bins = peel_bins
 
 
+@interactive
 def peel_band(band):
     """Performs peeling on a band using BBS"""
     log = logging.getLogger("Peeler")
@@ -1477,7 +1479,13 @@ if __name__=='__main__':
                 lb = loadbalance.LoadBalance(ppn=options.ncores)
                 lb.set_retries(5)
                 dview = lb.rc[:]
-                dview.execute('from Ion.ion_peel import *')
+                with dview.sync_imports():
+                    from Ion.ion_peel import
+                    import subprocess
+                    import os
+                    import numpy as np
+
+#                 dview.execute('from Ion.ion_peel import *')
                 dview.execute('import subprocess')
                 dview.execute('import os')
                 dview.execute('import numpy as np')
