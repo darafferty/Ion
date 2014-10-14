@@ -398,11 +398,11 @@ if __name__=='__main__':
                 # set the number of processes per band (for time-correlated solve).
                 for band in band_list:
                     band.ncores_per_cal = options.ncores
-#                 dview = lb.rc[:]
+                dview = lb.rc[:]
 #                 dview.execute('from Ion.ion_libs import *')
-#                 dview.map_sync(peel_band, band_list)
-                ar = lb.map(peel_band, band_list)
-                ar.wait()
+                dview.map_sync(peel_band, band_list)
+#                 ar = lb.map(peel_band, band_list)
+#                 ar.wait()
             else:
                 pool = MyPool(options.ncores)
                 pool.map(peel_band, band_list)
