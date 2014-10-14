@@ -391,7 +391,7 @@ if __name__=='__main__':
                 # Start up loadbalance engines
                 lb = loadbalance.LoadBalance(ppn=1)
                 lb.set_retries(5)
-                lb.sync_import('from Ion.ion_libs import *')
+#                 lb.sync_import('from Ion.ion_libs import *')
 
                 # With torque PBS, the number of bands to process in parallel is
                 # set by the PBS script, so the ncores option is used instead to
@@ -399,7 +399,7 @@ if __name__=='__main__':
                 for band in band_list:
                     band.ncores_per_cal = options.ncores
                 dview = lb.rc[:]
-#                 dview.execute('from Ion.ion_libs import *')
+                dview.execute('from Ion.ion_libs import *')
                 dview.map_sync(peel_band, band_list)
 #                 ar = lb.map(peel_band, band_list)
 #                 ar.wait()
