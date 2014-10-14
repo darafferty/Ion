@@ -380,7 +380,7 @@ if __name__=='__main__':
             log.info('Staring parallel engines on PBS nodes...')
             lb = loadbalance.LoadBalance(ppn=1)
             lb.set_retries(5)
-            lb.sync_import('from Ion.ion_libs import *')
+#            lb.sync_import('from Ion.ion_libs import *')
 
         # Set up peeling. Since the band objects are altered, this is a bit
         # tricky to parallelize, so just do it serially.
@@ -400,12 +400,10 @@ if __name__=='__main__':
                 # set the number of processes per band (for time-correlated solve).
                 for band in band_list:
                     band.ncores_per_cal = options.ncores
-
-                lb = loadbalance.LoadBalance(ppn=1)
-                lb.set_retries(5)
                 dview = lb.rc[:]
                 dview.execute('from Ion.ion_libs import *')
-                lb.lview.map(peel_band, band_list)
+                dview.map_sync(peel_band, band_list)
+#                 lb.lview.map(peel_band, band_list)
 #                 lb.sync_import('from Ion.ion_libs import *')
 #                 lb.lview.map(peel_band, band_list)
             else:
