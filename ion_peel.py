@@ -387,13 +387,16 @@ if __name__=='__main__':
         if not options.dryrun:
             if has_ipy_parallel and options.torque:
                 log.info('Distributing peeling over PBS nodes...')
-                lb = loadbalance.LoadBalance(ppn=1)
+                # With torque PBS, the number of bands to process in parallel is
+                # set by the PBS script, so the ncores option is used instead to
+                # set the number of processes per band (for time-correlated solve).
                 for band in band_list:
                     band.ncores_per_cal = options.ncores
+
+                lb = loadbalance.LoadBalance(ppn=1)
                 lb.set_retries(5)
-                dview = lb.rc[:]
-                dview.execute('from Ion.ion_libs import *')
-                lb.lview.map(peel_band, band_list)
+                lb.sync_import('from Ion.ion_libs import *')
+                lb.map(peel_band, band_list)
             else:
                 pool = MyPool(options.ncores)
                 pool.map(peel_band, band_list)
