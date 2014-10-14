@@ -396,7 +396,7 @@ if __name__=='__main__':
                 lb = loadbalance.LoadBalance(ppn=1)
                 lb.set_retries(5)
                 lb.sync_import('from Ion.ion_libs import *')
-                lb.map(peel_band, band_list)
+                lb.lview.map(peel_band, band_list)
             else:
                 pool = MyPool(options.ncores)
                 pool.map(peel_band, band_list)
