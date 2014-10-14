@@ -1477,7 +1477,7 @@ if __name__=='__main__':
                 lb = loadbalance.LoadBalance(ppn=options.ncores)
                 lb.set_retries(5)
                 dview = lb.rc[:]
-#                 dview.execute('from Ion.ion_peel import *')
+                dview.execute('from Ion.ion_peel import *')
                 dview.execute('import subprocess')
                 dview.execute('import os')
                 dview.execute('import numpy as np')
