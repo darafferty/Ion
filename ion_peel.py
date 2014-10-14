@@ -399,7 +399,7 @@ if __name__=='__main__':
                 tasks = []
                 for i, band in enumerate(band_list):
                     band.ncores_per_cal = options.ncores
-                    ar = lb.rc[i].apply_async(peel_band, band_list)
+                    ar = lb.rc[i].apply_async(peel_band, band)
                     tasks.append(ar)
                 results = [ar.get() for ar in tasks]
 #                 dview = lb.rc[:]
