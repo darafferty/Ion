@@ -69,6 +69,8 @@ class NoDaemonProcess(multiprocessing.Process):
     def _set_daemon(self, value):
         pass
     daemon = property(_get_daemon, _set_daemon)
+
+
 class MyPool(multiprocessing.pool.Pool):
     Process = NoDaemonProcess
 
@@ -235,6 +237,7 @@ def find_calibrators(master_skymodel, beamMS, flux_cut_Jy=15.0,
     cutoff in Jy and are selected from the master list defined by sources in
     master_skymodel.
     """
+    log = logging.getLogger("Find_calibrators")
     log.info('Checking {0}:'.format(beamMS))
 
     if band_skymodel is None or band_skymodel == master_skymodel:
@@ -827,6 +830,7 @@ def run_chunk(chunk_obj, lock):
     3. copy solutions to final parmdb
     4. clean directory of files created
     """
+    log = logging.getLogger("Run_chunk")
 
     instrument_orig  = chunk_obj.dataset+'/instrument'
     instrument_out = chunk_obj.dataset+'/instrument_out'
@@ -936,16 +940,12 @@ def update_parset(parset):
     Update the parset to set cellsize and chunksize = 0
     where a value of 0 forces all time/freq/cell intervals to be considered
     """
-    log.info('Beginning update_parset()...')
-
     f = open(parset, 'r')
     newlines = f.readlines()
     f.close()
     for i in range(0, len(newlines)):
 	if 'ChunkSize' in newlines[i] or 'CellSize.Time' in newlines[i]:
-	    log.debug('update_parset(): Updated a line in the parset')
 	    vars = newlines[i].split()
-	    #newlines[i] = vars[0]+' '+vars[1]+' '+str(blockl)+'\n'
 	    newlines[i] = vars[0]+' '+vars[1]+' 0\n'
     f = open(parset,'w')
     f.writelines(newlines)
