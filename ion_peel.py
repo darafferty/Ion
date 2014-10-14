@@ -375,7 +375,15 @@ if __name__=='__main__':
                     'block should be evenly divisble both by 2 and by the '
                     'solution interval')
 
-        # Setup peeling
+        # Start up loadbalance engines
+        if has_ipy_parallel and options.torque:
+            log.info('Staring parallel engines on PBS nodes...')
+            lb = loadbalance.LoadBalance(ppn=1)
+            lb.set_retries(5)
+            lb.sync_import('from Ion.ion_libs import *')
+
+        # Set up peeling. Since the band objects are altered, this is a bit
+        # tricky to parallelize, so just do it serially.
         for band in band_list:
             setup_peeling(band)
 
@@ -395,8 +403,11 @@ if __name__=='__main__':
 
                 lb = loadbalance.LoadBalance(ppn=1)
                 lb.set_retries(5)
-                lb.sync_import('from Ion.ion_libs import *')
+                dview = lb.rc[:]
+                dview.execute('from Ion.ion_libs import *')
                 lb.lview.map(peel_band, band_list)
+#                 lb.sync_import('from Ion.ion_libs import *')
+#                 lb.lview.map(peel_band, band_list)
             else:
                 pool = MyPool(options.ncores)
                 pool.map(peel_band, band_list)
