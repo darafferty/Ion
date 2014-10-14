@@ -58,7 +58,7 @@ try:
     has_ipy_parallel = True
 except ImportError:
     has_ipy_parallel = False
-from ion_libs import *
+from Ion.ion_libs import *
 
 _version = '1.0'
 
