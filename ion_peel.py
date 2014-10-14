@@ -400,7 +400,7 @@ if __name__=='__main__':
                     band.ncores_per_cal = options.ncores
                 dview = lb.rc[:]
                 dview.execute('from Ion.ion_libs import *')
-                dview.map_sync(peel_band, band_list)
+                ar = lb.lview.map(peel_band, band_list)
 #                 ar = lb.map(peel_band, band_list)
 #                 ar.wait()
             else:
