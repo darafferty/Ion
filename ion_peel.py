@@ -391,19 +391,23 @@ if __name__=='__main__':
                 # Start up loadbalance engines
                 lb = loadbalance.LoadBalance(ppn=1)
                 lb.set_retries(5)
-#                 lb.sync_import('from Ion.ion_libs import *')
+                lb.sync_import('from Ion.ion_libs import *')
 
                 # With torque PBS, the number of bands to process in parallel is
                 # set by the PBS script, so the ncores option is used instead to
                 # set the number of processes per band (for time-correlated solve).
-                for band in band_list:
+                tasks = []
+                for i, band in enumerate(band_list):
                     band.ncores_per_cal = options.ncores
-                dview = lb.rc[:]
-                dview.execute('from Ion.ion_libs import *')
+                    ar = lb.rc[i].apply_async(peel_band, band_list)
+                    task.append(ar)
+                results = [ar.get() for ar in tasks]
+#                 dview = lb.rc[:]
+#                 dview.execute('from Ion.ion_libs import *')
 #                 ar = dview.map_async(peel_band, band_list)
 #                 ar.wait()
-                ar = lb.map(peel_band, band_list)
-                ar.wait()
+#                 ar = lb.map(peel_band, band_list)
+#                 ar.wait()
             else:
                 pool = MyPool(options.ncores)
                 pool.map(peel_band, band_list)
