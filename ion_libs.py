@@ -360,7 +360,6 @@ def setup_peeling(band):
     band.peel_bins = peel_bins
 
 
-@interactive
 def peel_band(band):
     """Performs peeling on a band using BBS"""
     log = logging.getLogger("Peeler")
