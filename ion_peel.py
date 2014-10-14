@@ -401,7 +401,8 @@ if __name__=='__main__':
 #                 dview = lb.rc[:]
 #                 dview.execute('from Ion.ion_libs import *')
 #                 dview.map_sync(peel_band, band_list)
-                lb.map(peel_band, band_list)
+                ar = lb.map(peel_band, band_list)
+                ar.wait()
             else:
                 pool = MyPool(options.ncores)
                 pool.map(peel_band, band_list)
