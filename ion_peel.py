@@ -193,7 +193,7 @@ if __name__=='__main__':
         # cut is set to 10% of the input flux cutoff.
         log.info('Searching sky model for suitable calibrators...')
         if options.gsm is not None:
-            master_skymodel = options.gsm
+            master_skymodel = os.path.abspath(options.gsm)
         else:
             master_skymodel = outdir + '/skymodels/potential_calibrators.skymodel'
             subprocess.call("gsm.py {0} {1} {2} {3} {4} 2>/dev/null".format(master_skymodel,
