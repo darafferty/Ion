@@ -149,7 +149,7 @@ if __name__=='__main__':
             outfile = args[3]
 
         # Set up output directories and initialize logging
-        outdir = options.outdir
+        outdir = os.path.abspath(options.outdir)
         if not os.path.isdir(outdir):
             os.mkdir(outdir)
             logfilename = outdir + '/' + outfile + '.log'
@@ -397,8 +397,8 @@ if __name__=='__main__':
                 # set by the PBS script, so the ncores option is used instead to
                 # set the number of processes per band (for time-correlated solve).
 #                 tasks = []
-#                 for i, band in enumerate(band_list):
-#                     band.ncores_per_cal = options.ncores
+                for i, band in enumerate(band_list):
+                    band.ncores_per_cal = options.ncores
 #                     ar = lb.rc[i].apply_async(peel_band, band)
 #                     tasks.append(ar)
 #                 results = [ar.get() for ar in tasks]
