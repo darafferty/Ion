@@ -22,22 +22,23 @@ All the measurement sets are assumed to be a single directory (defined by the
 Direction-independent selfcal solutions must have been applied to the
 CORRECTED_DATA column of all MS files before running this script.
 
-The script supports running over multiple nodes using IPython and PBS. To run
-in this way, make a PBS script and run it with qsub as follows:
+The script supports running over multiple nodes using IPython and Torque/PBS (the
+"-T" option). To run in this way, make a PBS script and run it with qsub. E.g.:
 
 run_peel.pbs:
 
     #!/bin/bash
     #PBS -N peeling_10SB
     #PBS -l walltime=100:00:00
-    #PBS -l nodes=10:ppn=3,pmem=28gb #--> 10 nodes (one per band), 3 processors per node (for time-correlated solve), 28 GB memory
+    #PBS -l nodes=10:ppn=3,pmem=28gb --> 10 nodes (one per band), 3 processors per node (for time-correlated solve), 28 GB memory
     #PBS -j oe
     #PBS -o output-$PBS_JOBNAME-$PBS_JOBID
     #PBS -m bea
     #PBS -M drafferty@hs.uni-hamburg.de
 
     cd $PBS_O_WORKDIR
-    python ion_peel.py 90.80229 42.28977 10 peeled_10SB.h5 -n 3
+    source /home/sttf201/init-lofar.sh
+    python ion_peel.py 90.80229 42.28977 10 peeled_10SB.h5 -n 3 -T --> do 3 parts in parallel on each node (matches ppn=3 above)
 
 Run with:
 
@@ -388,8 +389,12 @@ if __name__=='__main__':
         if not options.dryrun:
             if has_ipy_parallel and options.torque:
                 log.info('Distributing peeling over nodes...')
-                # Start up loadbalance engines
-                lb = loadbalance.LoadBalance(ppn=1)
+                # Start up parallel engines
+                if options.verbose:
+                    loglevel = logging.DEBUG
+                else:
+                    loglevel = logging.INFO
+                lb = loadbalance.LoadBalance(ppn=1, logfile=None, loglevel=loglevel)
                 lb.set_retries(5)
                 lb.sync_import('from Ion.ion_libs import *')
 
@@ -398,6 +403,8 @@ if __name__=='__main__':
                 # set the number of processes per band (for time-correlated solve).
                 for i, band in enumerate(band_list):
                     band.ncores_per_cal = options.ncores
+
+                # Map list of bands to the engines
                 ar = lb.map(peel_band, band_list)
                 for r in ar:
                     log.info("Peeling of %s finished on %s"%(r['name'], r['host']))
