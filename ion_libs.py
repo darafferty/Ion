@@ -414,9 +414,9 @@ def peel_band(band):
     # Perform the peeling. Do this step even if time-correlated solutions
     # are desired so that the proper parmdb is made and so that the correlation
     # time can be estimated
-#    subprocess.call("calibrate-stand-alone -f {0} {1} {2} > {3}/logs/"
-#         "{4}_peeling_calibrate.log 2>&1".format(newmsname, peelparset,
-#         skymodel, band.outdir, msname), shell=True)
+    subprocess.call("calibrate-stand-alone -f {0} {1} {2} > {3}/logs/"
+        "{4}_peeling_calibrate.log 2>&1".format(newmsname, peelparset,
+        skymodel, band.outdir, msname), shell=True)
 
     if band.use_timecorr:
         # Do time-correlated peeling.
@@ -433,11 +433,11 @@ def peel_band(band):
             scalar_phase=band.use_scalar_phase, phase_only=True,
             time_block=band.time_block, beam_mode=band.beam_mode,
             uvmin=band.uvmin)
-#         calibrate(newmsname, peelparset_timecorr, skymodel, msname,
-#             use_timecorr=True, outdir=band.outdir, instrument='instrument',
-#             time_block=band.time_block, ionfactor=band.ionfactor,
-#             solint=band.solint_min, flag_filler=band.flag_filler,
-#             ncores=band.ncores_per_cal)
+        calibrate(newmsname, peelparset_timecorr, skymodel, msname,
+            use_timecorr=True, outdir=band.outdir, instrument='instrument',
+            time_block=band.time_block, ionfactor=band.ionfactor,
+            solint=band.solint_min, flag_filler=band.flag_filler,
+            ncores=band.ncores_per_cal)
     return {'host':socket.gethostname(), 'name':band.msname}
 
 

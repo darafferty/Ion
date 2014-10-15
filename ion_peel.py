@@ -396,21 +396,9 @@ if __name__=='__main__':
                 # With torque PBS, the number of bands to process in parallel is
                 # set by the PBS script, so the ncores option is used instead to
                 # set the number of processes per band (for time-correlated solve).
-#                 tasks = []
                 for i, band in enumerate(band_list):
                     band.ncores_per_cal = options.ncores
-#                     ar = lb.rc[i].apply_async(peel_band, band)
-#                     tasks.append(ar)
-#                 results = [ar.get() for ar in tasks]
-#                 dview = lb.rc[:]
-#                 dview.execute('from Ion.ion_libs import *')
-#                 ar = dview.map_async(peel_band, band_list)
-#                 ar.wait()
                 ar = lb.map(peel_band, band_list)
-#                 dview = lb.rc[:]
-#                 dview.execute('from Ion.ion_libs import *')
-#                 ar = dview.map_async(peel_band, band_list)
-#                 ar.wait()
                 for r in ar:
                     log.info("Peeling of %s finished on %s"%(r['name'], r['host']))
 
