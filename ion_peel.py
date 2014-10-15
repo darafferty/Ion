@@ -30,7 +30,7 @@ run_peel.pbs:
     #!/bin/bash
     #PBS -N peeling_10SB
     #PBS -l walltime=100:00:00
-    #PBS -l nodes=10:ppn=3,pmem=28gb --> 10 nodes (one per band), 3 processors per node (for time-correlated solve), 28 GB memory
+    #PBS -l nodes=10:ppn=6 --> 10 nodes (one per band), 6 processors per node (the whole node)
     #PBS -j oe
     #PBS -o output-$PBS_JOBNAME-$PBS_JOBID
     #PBS -m bea
@@ -38,7 +38,7 @@ run_peel.pbs:
 
     cd $PBS_O_WORKDIR
     source /home/sttf201/init-lofar.sh
-    python ion_peel.py 90.80229 42.28977 10 peeled_10SB.h5 -n 3 -T --> do 3 parts in parallel on each node (matches ppn=3 above)
+    python ion_peel.py 90.80229 42.28977 10 peeled_10SB.h5 -n 3 -T --> do 3 parts in parallel on each node (must be <= ppn above)
 
 Run with:
 
@@ -370,6 +370,7 @@ if __name__=='__main__':
             band.scale_solint = options.scale
             band.do_dirindep = options.dirindep
             band.uvmin = options.uvmin
+            band.peel_start_delay = 0.0
             if band.use_timecorr and (np.remainder(band.time_block, 2) or
                 np.remainder(band.time_block, band.solint_min)):
                 log.warning('For best results, the number of time samples in a '
@@ -403,6 +404,7 @@ if __name__=='__main__':
                 # set the number of processes per band (for time-correlated solve).
                 for i, band in enumerate(band_list):
                     band.ncores_per_cal = options.ncores
+                    band.peel_start_delay = i * 60.0 # start delay in seconds to avoid too much disk IO
 
                 # Map list of bands to the engines
                 ar = lb.map(peel_band, band_list)

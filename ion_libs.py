@@ -27,6 +27,7 @@ from numpy import int32 as Nint
 from numpy import float32 as Nfloat
 import copy
 import socket
+import time
 
 
 def init_logger(logfilename, debug=False):
@@ -371,6 +372,8 @@ def peel_band(band):
     # Check if peeling is required
     if not band.do_peeling:
         return
+
+    time.sleep(band.peel_start_delay)
 
     # Define file names
     msname = band.msname
