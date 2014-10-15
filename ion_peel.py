@@ -30,14 +30,14 @@ run_peel.pbs:
     #!/bin/bash
     #PBS -N peeling_10SB
     #PBS -l walltime=100:00:00
-    #PBS -l nodes=10                --> each node gets one band
+    #PBS -l nodes=10:ppn=3,pmem=28gb #--> 10 nodes (one per band), 3 processors per node (for time-correlated solve), 28 GB memory
     #PBS -j oe
     #PBS -o output-$PBS_JOBNAME-$PBS_JOBID
     #PBS -m bea
     #PBS -M drafferty@hs.uni-hamburg.de
 
     cd $PBS_O_WORKDIR
-    python ion_peel.py 90.80229 42.28977 10 peeled_10SB.h5 -n 1
+    python ion_peel.py 90.80229 42.28977 10 peeled_10SB.h5 -n 3
 
 Run with:
 
@@ -391,7 +391,7 @@ if __name__=='__main__':
                 # Start up loadbalance engines
                 lb = loadbalance.LoadBalance(ppn=1)
                 lb.set_retries(5)
-                lb.sync_import('from Ion.ion_libs import *')
+#                 lb.sync_import('from Ion.ion_libs import *')
 
                 # With torque PBS, the number of bands to process in parallel is
                 # set by the PBS script, so the ncores option is used instead to
@@ -406,8 +406,14 @@ if __name__=='__main__':
 #                 dview.execute('from Ion.ion_libs import *')
 #                 ar = dview.map_async(peel_band, band_list)
 #                 ar.wait()
-                ar = lb.map(peel_band, band_list)
+#                 lb.map(peel_band, band_list)
+                dview = lb.rc[:]
+                dview.execute('from Ion.ion_libs import *')
+                ar = dview.map_async(peel_band, band_list)
                 ar.wait()
+                for i,r in enumerate(ar):
+                    log.info("task: %s finished on %s"%(r['name'], r['host']))
+
             else:
                 pool = MyPool(options.ncores)
                 pool.map(peel_band, band_list)
