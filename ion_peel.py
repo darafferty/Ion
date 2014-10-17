@@ -30,7 +30,7 @@ run_peel.pbs:
     #!/bin/bash
     #PBS -N peeling_10SB
     #PBS -l walltime=100:00:00
-    #PBS -l nodes=10:ppn=6 --> 10 nodes (one per band), 6 processors per node (the whole node)
+    #PBS -l nodes=10:ppn=6 --> 10 nodes (one per band), 6 processors per node (i.e., the whole node)
     #PBS -j oe
     #PBS -o output-$PBS_JOBNAME-$PBS_JOBID
     #PBS -m bea
@@ -126,6 +126,8 @@ if __name__=='__main__':
         '[default: %default]', action='store_true', default=False)
     opt.add_option('-T', '--torque', help='Use torque? '
         '[default: %default]', action='store_true', default=False)
+    opt.add_option('-r', '--resume', help='Try to resume interupted time-correlated '
+        'calibration? [default: %default]', action='store_true', default=False)
     opt.add_option('-c', '--clobber', help='Clobber existing output files? '
         '[default: %default]', action='store_true', default=False)
     (options, args) = opt.parse_args()
@@ -153,6 +155,10 @@ if __name__=='__main__':
         outdir = os.path.abspath(options.outdir)
         if not os.path.isdir(outdir):
             os.mkdir(outdir)
+            logfilename = outdir + '/' + outfile + '.log'
+            init_logger(logfilename, debug=options.verbose)
+            log = logging.getLogger("Main")
+        elif options.resume:
             logfilename = outdir + '/' + outfile + '.log'
             init_logger(logfilename, debug=options.verbose)
             log = logging.getLogger("Main")
@@ -371,6 +377,7 @@ if __name__=='__main__':
             band.do_dirindep = options.dirindep
             band.uvmin = options.uvmin
             band.peel_start_delay = 0.0
+            band.resume = options.resume
             if band.use_timecorr and (np.remainder(band.time_block, 2) or
                 np.remainder(band.time_block, band.solint_min)):
                 log.warning('For best results, the number of time samples in a '

@@ -391,21 +391,22 @@ def peel_band(band):
         '      - {3}/logs/ndppp_avg_{1}.log\n'
         '      - {3}/logs/{2}_peeling_calibrate.log'.format(band.file, msname,
         msname, band.outdir, band.phase_only))
-    f = open(p_shiftname, 'w')
-    f.write("msin={0}\n"
-        "msin.datacolumn=CORRECTED_DATA\n"
-        "msout={1}\n"
-        "msin.startchan = 0\n"
-        "msin.nchan = 0\n"
-        "steps = [avg]\n"
-        "avg.type = average\n"
-        "avg.freqstep = {2}".format(band.file, newmsname, band.navg))
-    f.close()
-    subprocess.call("NDPPP {0} > {1}/logs/ndppp_avg_{2}.log 2>&1".format(p_shiftname,
-        band.outdir, msname), shell=True)
+    if not band.resume:
+        f = open(p_shiftname, 'w')
+        f.write("msin={0}\n"
+            "msin.datacolumn=CORRECTED_DATA\n"
+            "msout={1}\n"
+            "msin.startchan = 0\n"
+            "msin.nchan = 0\n"
+            "steps = [avg]\n"
+            "avg.type = average\n"
+            "avg.freqstep = {2}".format(band.file, newmsname, band.navg))
+        f.close()
+        subprocess.call("NDPPP {0} > {1}/logs/ndppp_avg_{2}.log 2>&1".format(p_shiftname,
+            band.outdir, msname), shell=True)
 
     # Perform dir-independent calibration if desired
-    if band.do_dirindep:
+    if band.do_dirindep and not band.resume:
         dirindep_parset = '{0}/parsets/{1}.dirindep.parset'.format(
             band.outdir, msname)
         make_dirindep_parset(dirindep_parset, scalar_phase=band.use_scalar_phase,
@@ -417,9 +418,10 @@ def peel_band(band):
     # Perform the peeling. Do this step even if time-correlated solutions
     # are desired so that the proper parmdb is made and so that the correlation
     # time can be estimated
-    subprocess.call("calibrate-stand-alone -f {0} {1} {2} > {3}/logs/"
-        "{4}_peeling_calibrate.log 2>&1".format(newmsname, peelparset,
-        skymodel, band.outdir, msname), shell=True)
+    if not band.resume:
+        subprocess.call("calibrate-stand-alone -f {0} {1} {2} > {3}/logs/"
+            "{4}_peeling_calibrate.log 2>&1".format(newmsname, peelparset,
+            skymodel, band.outdir, msname), shell=True)
 
     if band.use_timecorr:
         # Do time-correlated peeling.
@@ -432,15 +434,16 @@ def peel_band(band):
 #        band.ionfactor = get_ionfactor(msname, instrument='instrument')
 
         # Make the parset and do the peeling
-        make_peeling_parset(peelparset_timecorr, band.peel_bins,
-            scalar_phase=band.use_scalar_phase, phase_only=True,
-            time_block=band.time_block, beam_mode=band.beam_mode,
-            uvmin=band.uvmin)
+        if not band.resume:
+            make_peeling_parset(peelparset_timecorr, band.peel_bins,
+                scalar_phase=band.use_scalar_phase, phase_only=True,
+                time_block=band.time_block, beam_mode=band.beam_mode,
+                uvmin=band.uvmin)
         calibrate(newmsname, peelparset_timecorr, skymodel, msname,
             use_timecorr=True, outdir=band.outdir, instrument='instrument',
             time_block=band.time_block, ionfactor=band.ionfactor,
             solint=band.solint_min, flag_filler=band.flag_filler,
-            ncores=band.ncores_per_cal)
+            ncores=band.ncores_per_cal, resume=band.resume)
     return {'host':socket.gethostname(), 'name':band.msname}
 
 
@@ -728,7 +731,7 @@ def makeFlagParset(h5file, solset):
 
 def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
     time_block=None, ionfactor=0.5, outdir='.', instrument='instrument',
-    solint=None, flag_filler=False, ncores=1):
+    solint=None, flag_filler=False, ncores=1, resume=False):
     """Calls BBS to calibrate with optional time-correlated fitting"""
     log = logging.getLogger("Calib")
 
@@ -778,13 +781,15 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
             trows, blockl, tlen*3600.0, nsols, ionfactor, fwhm_min, fwhm_max))
 
         # Update cellsize and chunk size of parset
-        update_parset(parset)
+        if not resume:
+            update_parset(parset)
 
         # Make a copy of the master parmdb to store time-correlated solutions
         # in, resetting and flagging as needed
-        os.system('rm -rf ' +instrument_out)
-        clean_and_copy_parmdb(instrument_orig, instrument_out, blockl,
-            flag_filler=flag_filler, msname=msname, timepersample=timepersample)
+        if not resume:
+            os.system('rm -rf ' +instrument_out)
+            clean_and_copy_parmdb(instrument_orig, instrument_out, blockl,
+                flag_filler=flag_filler, msname=msname, timepersample=timepersample)
 
         # Calibrate the chunks
         chunk_list = []
@@ -817,6 +822,15 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
             chunk_obj.output = chunk_obj.outdir + '/part' + str(chunk_obj.chunk) + os.path.basename(chunk_obj.dataset)
             chunk_obj.ntot = nsols
             chunk_list.append(chunk_obj)
+
+        if resume:
+            # Try to determine last chunk that was run
+            last_part = 0
+            for chunk in chunk_list:
+                if os.path.exists(chunk_obj.output):
+                    last_part = chunk_obj.chunk
+            log.info('Resuming time-correlated calibration from solution #{0}'.format(last_part))
+            chunk_list = chunk_list[last_part:]
 
         manager = multiprocessing.Manager()
         pool = multiprocessing.Pool(ncores)
@@ -878,6 +892,8 @@ def run_chunk(chunk_obj, lock):
     # Clean up
     log.debug('run_chunk(): Clean up...')
     os.system('rm -rf {0}*'.format(chunk_obj.output))
+    if os.path.exists(chunk_obj.output):
+        os.system('rm -rf {0}*'.format(chunk_obj.output))
     os.system('rm calibrate-stand-alone*.log')
 
 
@@ -959,6 +975,11 @@ def update_parset(parset):
 
 def split_ms(msin, msout, start_out, end_out):
     """Splits an MS between start and end times in hours relative to first time"""
+    if os.path.exists(msout):
+        os.system('rm -rf {0}'.format(msout))
+    if os.path.exists(msout):
+        os.system('rm -rf {0}'.format(msout))
+
     t = pt.table(msin, ack=False)
 
     starttime = t[0]['TIME']
