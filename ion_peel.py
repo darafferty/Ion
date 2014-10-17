@@ -402,7 +402,7 @@ if __name__=='__main__':
                     loglevel = logging.DEBUG
                 else:
                     loglevel = logging.INFO
-                lb = loadbalance.LoadBalance(ppn=1, logfile=None, loglevel=loglevel)
+                lb = loadbalance.LoadBalance(ppn=1, logfile=None, loglevel=logging.DEBUG)
                 lb.set_retries(5)
                 lb.sync_import('from Ion.ion_libs import *')
 
