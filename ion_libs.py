@@ -833,7 +833,7 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
             if len(chunk_list) > 0:
                 log.info('Resuming time-correlated calibration from solution #{0}'.format(last_part))
             else:
-                log.info('Peeling complete. Nothing to resume.")
+                log.info('Peeling complete. Nothing to resume.')
                 return
 
         manager = multiprocessing.Manager()
