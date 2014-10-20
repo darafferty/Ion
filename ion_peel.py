@@ -405,7 +405,6 @@ if __name__=='__main__':
                 lb = loadbalance.LoadBalance(ppn=1, logfile=None, loglevel=logging.DEBUG)
                 lb.set_retries(5)
                 lb.sync_import('from Ion.ion_libs import *')
-                lb.sync_dict(dict(log=log))
 
                 # With torque PBS, the number of bands to process in parallel is
                 # set by the PBS script, so the ncores option is used instead to

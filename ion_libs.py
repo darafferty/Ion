@@ -367,6 +367,8 @@ def setup_peeling(band):
 
 def peel_band(band):
     """Performs peeling on a band using BBS"""
+    logfilename = band.outdir + '/logs/' + band.msname + '.peel_band.log'
+    init_logger(logfilename, debug=options.verbose)
     log = logging.getLogger("Peeler")
 
     # Check if peeling is required
