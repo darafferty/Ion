@@ -57,8 +57,16 @@ class MultiLineFormatter(logging.Formatter):
         str = str.replace('\n', '\n' + ' '*len(header))
         return str
 
-def makeCorrectParset(outdir, noTEC=False):
+def makeCorrectParset(outdir, noTEC=False, beam_mode='ARRAY_FACTOR'):
     """Makes BBS parset to correct DATA at phase center for various effects"""
+
+    # Handle beam
+    if beam_mode.lower() == 'off':
+        beam_enable = 'F'
+        beam_mode = 'DEFAULT'
+    else:
+        beam_enable = 'T'
+
     newlines = ['Strategy.Stations = []\n',
         'Strategy.InputColumn = DATA\n',
         'Strategy.ChunkSize = 250\n',
@@ -67,7 +75,8 @@ def makeCorrectParset(outdir, noTEC=False):
         newlines += ['Strategy.Steps = [correct_beam]\n',
         'Step.correct_beam.Operation = CORRECT\n',
         'Step.correct_beam.Model.Sources = []\n',
-        'Step.correct_beam.Model.Beam.Enable = T\n',
+        'Step.correct_beam.Model.Beam.Enable = {0}\n'.format(beam_enable),
+        'Step.correct_beam.Model.Beam.Mode = {0}\n'.format(beam_mode),
         'Step.correct_beam.Model.Beam.UseChannelFreq = T\n',
         'Step.correct_beam.Output.Column = CORRECTED_DATA\n',
         'Step.correct_beam.Output.WriteFlags = F']
@@ -75,7 +84,8 @@ def makeCorrectParset(outdir, noTEC=False):
         newlines += ['Strategy.Steps = [correct_beam_phase, correct_screen]\n',
         'Step.correct_beam_phase.Operation = CORRECT\n',
         'Step.correct_beam_phase.Model.Sources = []\n',
-        'Step.correct_beam_phase.Model.Beam.Enable = T\n',
+        'Step.correct_beam_phase.Model.Beam.Enable = {0}\n'.format(beam_enable),
+        'Step.correct_beam_phase.Model.Beam.Mode = {0}\n'.format(beam_mode),
         'Step.correct_beam_phase.Model.Beam.UseChannelFreq = T\n',
         'Step.correct_beam_phase.Model.Gain.Enable = F\n',
         'Step.correct_beam_phase.Model.CommonScalarPhase.Enable = T\n',
@@ -95,11 +105,11 @@ def makeCorrectParset(outdir, noTEC=False):
     return parset
 
 
-def apply(msnames, parmdb, noTEC=False, logfilename='apply.log'):
+def apply(msnames, parmdb, noTEC=False, logfilename='apply.log', beam_mode='ARRAY_FACTOR'):
     """Applies beam or dir-independent calibration, beam, and TEC screen at phase
     center to DATA column and writes to CORRECTED_DATA"""
     root_dir = '/'.join(msnames[0].split('/')[:-1])
-    parset = makeCorrectParset(root_dir, noTEC)
+    parset = makeCorrectParset(root_dir, noTEC, beam_mode)
     skymodel = root_dir + '/none'
     os.system("touch {0}".format(skymodel))
     for msname in msnames:
@@ -140,11 +150,11 @@ def clip(msnames, station_selection=None, threshold=750):
 
 
 def concatenate(msnames, outdir, parmdb, noscreen=False, logfilename=None,
-    cliplevel=None):
+    cliplevel=None, beam_mode='ARRAY_FACTOR'):
     """Corrects, clips, and concatenates the input MSes"""
     # Correct the DATA column for beam, phase, and screen in phase center
     # and write to CORRECTED_DATA column
-    apply(msnames, parmdb, noTEC=noscreen, logfilename=logfilename)
+    apply(msnames, parmdb, noTEC=noscreen, logfilename=logfilename, beam_mode=beam_mode)
     if cliplevel is not None:
         clip(msnames, threshold=cliplevel)
 
@@ -251,7 +261,7 @@ def createMask(msfile, skymodel, npix, cellsize, filename=None, logfilename=None
 
 def awimager(msname, imageroot, UVmax, cellsize, npix, threshold, mask_image=None,
     parmdbname='ionosphere', robust=0, use_ion=False, imagedir='.', clobber=False,
-    logfilename=None, niter=1000000, beamOFF=False):
+    logfilename=None, niter=1000000, beam=True):
     """Calls the AWimager"""
 
     if clobber:
@@ -273,7 +283,7 @@ def awimager(msname, imageroot, UVmax, cellsize, npix, threshold, mask_image=Non
         'threshold=%s weight=briggs robust=%f '\
         % (msname, imagedir, imageroot, niter, UVmax, cellsize, npix,
         threshold, robust)
-    if beamOFF:
+    if not beam:
         callStr += 'applybeamcode=3 '
     if use_ion:
         callStr += 'applyIonosphere=1 timewindow=10 SpheSupport=45 parmdbname=%s '\
@@ -317,8 +327,8 @@ if __name__=='__main__':
         '[default: %default]', type='int', default=100000)
     opt.add_option('-v', '--verbose', help='Set verbose output and interactive '
         'mode [default: %default]', action='store_true', default=False)
-    opt.add_option('-B', '--beamOFF', help='Turn off beam during imaging? '
-        '[default: %default]', action='store_true', default=False)
+    opt.add_option('-B', '--beam', help='Beam mode to use during peeling. Use OFF '
+        'to disable the beam [default: %default]', type='str', default='ARRAY_FACTOR')
     opt.add_option('-c', '--clobber', help='Clobber existing output files? '
         '[default: %default]', action='store_true', default=False)
     (options, args) = opt.parse_args()
@@ -364,6 +374,10 @@ if __name__=='__main__':
             imageroots.append('noscreen')
             use_ions.append(False)
         UVmax = options.uvmax
+        if options.beam.lower() == 'off':
+            beam = False
+        else:
+            beam = True
 
         for msname, imageroot, use_ion in zip(msnames, imageroots, use_ions):
             log.info('Preparing to make {0} image...'.format(imageroot))
@@ -375,7 +389,7 @@ if __name__=='__main__':
             else:
                 noscreen = True
             concatenate(ms_list, options.outdir, options.parmdb, noscreen,
-                logfilename=logfilename, cliplevel=options.clip)
+                logfilename=logfilename, cliplevel=options.clip, beam_mode=options.beam)
             log.info('Final data to be imaged: {0}'.format(msname))
 
             if options.automask > 0:
@@ -387,7 +401,8 @@ if __name__=='__main__':
                     for i in range(options.iter):
                         awimager(msname, imageroot, UVmax, options.size, options.npix,
                             options.threshold, clobber=options.clobber, use_ion=use_ion,
-                            imagedir=imagedir, logfilename=logfilename, niter=10)
+                            imagedir=imagedir, logfilename=logfilename, niter=10,
+                            beam=beam)
                         img = bdsm.process_image(imagedir+'/'+imageroot+'.restored',
                             blank_limit=1e-4, stop_at='isl', thresh_pix=6,
                             thresh_isl=4)
@@ -399,7 +414,7 @@ if __name__=='__main__':
                 awimager(msname, imageroot, UVmax, options.size, options.npix,
                     options.threshold, mask_image=mask_image, use_ion=use_ion,
                     imagedir=imagedir, logfilename=logfilename, clobber=True,
-                    niter=options.iter, beamOFF=options.beamOFF)
+                    niter=options.iter, beam=beam)
 
             elif options.maskfile != '':
                 if os.path.isdir(options.maskfile):
@@ -419,13 +434,13 @@ if __name__=='__main__':
                 awimager(msname, imageroot, UVmax, options.size, options.npix,
                     options.threshold, mask_image=mask_image, use_ion=use_ion,
                     imagedir=imagedir, logfilename=logfilename, clobber=True,
-                    niter=options.iter, beamOFF=options.beamOFF)
+                    niter=options.iter, beam=beam)
 
             else:
                 log.info('Calling AWimager to make {0} image...'.format(imageroot))
                 awimager(msname, imageroot, UVmax, options.size, options.npix,
                     options.threshold, use_ion=use_ion, imagedir=imagedir,
                     logfilename=logfilename, clobber=True, niter=options.iter,
-                    beamOFF=options.beamOFF)
+                    beam=beam)
 
         log.info('Imaging complete.')
