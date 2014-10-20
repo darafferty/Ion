@@ -251,7 +251,7 @@ def createMask(msfile, skymodel, npix, cellsize, filename=None, logfilename=None
 
 def awimager(msname, imageroot, UVmax, cellsize, npix, threshold, mask_image=None,
     parmdbname='ionosphere', robust=0, use_ion=False, imagedir='.', clobber=False,
-    logfilename=None, niter=1000000, beamOFF=options.beamOFF):
+    logfilename=None, niter=1000000, beamOFF=False):
     """Calls the AWimager"""
 
     if clobber:
