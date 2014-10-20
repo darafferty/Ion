@@ -386,8 +386,8 @@ if __name__=='__main__':
 
         # Set up peeling. Since the band objects are altered, this is a bit
         # tricky to parallelize, so just do it serially.
-        for band in band_list:
-            setup_peeling(band)
+#         for band in band_list:
+#             setup_peeling(band)
 
         # Perform peeling for each band. The peel_band script will split up the
         # calibrators for each band into sets for peeling.
@@ -418,11 +418,11 @@ if __name__=='__main__':
                 for r in ar:
                     log.info("Peeling of %s finished on %s"%(r['name'], r['host']))
 
-            else:
-                pool = MyPool(options.ncores)
-                pool.map(peel_band, band_list)
-                pool.close()
-                pool.join()
+#             else:
+#                 pool = MyPool(options.ncores)
+#                 pool.map(peel_band, band_list)
+#                 pool.close()
+#                 pool.join()
 
             # Write all the solutions to an H5parm file for later use in LoSoTo.
             write_sols(field_list, outdir+'/'+outfile, flag_outliers=options.flag)
