@@ -251,7 +251,7 @@ def createMask(msfile, skymodel, npix, cellsize, filename=None, logfilename=None
 
 def awimager(msname, imageroot, UVmax, cellsize, npix, threshold, mask_image=None,
     parmdbname='ionosphere', robust=0, use_ion=False, imagedir='.', clobber=False,
-    logfilename=None, niter=1000000):
+    logfilename=None, niter=1000000, beamOFF=options.beamOFF):
     """Calls the AWimager"""
 
     if clobber:
@@ -273,7 +273,8 @@ def awimager(msname, imageroot, UVmax, cellsize, npix, threshold, mask_image=Non
         'threshold=%s weight=briggs robust=%f '\
         % (msname, imagedir, imageroot, niter, UVmax, cellsize, npix,
         threshold, robust)
-
+    if beamOFF:
+        callStr += 'applybeamcode=3 '
     if use_ion:
         callStr += 'applyIonosphere=1 timewindow=10 SpheSupport=45 parmdbname=%s '\
             % (parmdbname)
@@ -316,6 +317,8 @@ if __name__=='__main__':
         '[default: %default]', type='int', default=100000)
     opt.add_option('-v', '--verbose', help='Set verbose output and interactive '
         'mode [default: %default]', action='store_true', default=False)
+    opt.add_option('-B', '--beamOFF', help='Turn off beam during imaging? '
+        '[default: %default]', action='store_true', default=False)
     opt.add_option('-c', '--clobber', help='Clobber existing output files? '
         '[default: %default]', action='store_true', default=False)
     (options, args) = opt.parse_args()
@@ -396,7 +399,7 @@ if __name__=='__main__':
                 awimager(msname, imageroot, UVmax, options.size, options.npix,
                     options.threshold, mask_image=mask_image, use_ion=use_ion,
                     imagedir=imagedir, logfilename=logfilename, clobber=True,
-                    niter=options.iter)
+                    niter=options.iter, beamOFF=options.beamOFF)
 
             elif options.maskfile != '':
                 if os.path.isdir(options.maskfile):
@@ -416,12 +419,13 @@ if __name__=='__main__':
                 awimager(msname, imageroot, UVmax, options.size, options.npix,
                     options.threshold, mask_image=mask_image, use_ion=use_ion,
                     imagedir=imagedir, logfilename=logfilename, clobber=True,
-                    niter=options.iter)
+                    niter=options.iter, beamOFF=options.beamOFF)
 
             else:
                 log.info('Calling AWimager to make {0} image...'.format(imageroot))
                 awimager(msname, imageroot, UVmax, options.size, options.npix,
                     options.threshold, use_ion=use_ion, imagedir=imagedir,
-                    logfilename=logfilename, clobber=True, niter=options.iter)
+                    logfilename=logfilename, clobber=True, niter=options.iter,
+                    beamOFF=options.beamOFF)
 
         log.info('Imaging complete.')
