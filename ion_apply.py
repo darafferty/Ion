@@ -58,8 +58,17 @@ class MultiLineFormatter(logging.Formatter):
         return str
 
 
-def makeNonDirParset(outdir, solint=1, uvmin=80, freqint=10):
+def makeNonDirParset(outdir, solint=1, uvmin=80, freqint=10,
+    beam_mode='DEFAULT'):
     """Makes BBS parset for dir-indep calibration with screen included"""
+
+    # Handle beam
+    if beam_mode.lower() == 'off':
+        beam_enable = 'F'
+        beam_mode = 'DEFAULT'
+    else:
+        beam_enable = 'T'
+
     newlines = ['Strategy.Stations = []\n',
         'Strategy.InputColumn = DATA\n',
         'Strategy.ChunkSize = 250\n',
@@ -70,8 +79,8 @@ def makeNonDirParset(outdir, solint=1, uvmin=80, freqint=10):
         'Step.solve.Model.Sources = []\n',
         'Step.solve.Model.Ionosphere.Enable = T\n',
         'Step.solve.Model.Ionosphere.Type = EXPION\n',
-        'Step.solve.Model.Beam.Enable = T\n',
-        'Step.solve.Model.Beam.Mode = ARRAY_FACTOR\n',
+        'Step.solve.Model.Beam.Enable = {0}\n'.format(beam_enable),
+        'Step.solve.Model.Beam.Mode = {0}\n'.format(beam_mode),
         'Step.solve.Model.Beam.UseChannelFreq = T\n',
         'Step.solve.Model.Cache.Enable = T\n',
         'Step.solve.Model.Gain.Enable = F\n',
@@ -140,8 +149,16 @@ def makeGainCalParset(msname, parmdb, solint=1, uvmin=80, freqint=10):
     return parset
 
 
-def makeCorrectParset(outdir, noTEC=False):
+def makeCorrectParset(outdir, noTEC=False, beam_mode='DEFAULT'):
     """Makes BBS parset for correct with screen included"""
+
+    # Handle beam
+    if beam_mode.lower() == 'off':
+        beam_enable = 'F'
+        beam_mode = 'DEFAULT'
+    else:
+        beam_enable = 'T'
+
     newlines = ['Strategy.Stations = []\n',
         'Strategy.InputColumn = DATA\n',
         'Strategy.ChunkSize = 1500\n',
@@ -152,8 +169,8 @@ def makeCorrectParset(outdir, noTEC=False):
         newlines += ['Strategy.Steps = [correct1, correct2]\n']
     newlines += ['Step.correct1.Operation = CORRECT\n',
         'Step.correct1.Model.Sources = []\n',
-        'Step.correct1.Model.Beam.Enable = T\n',
-        'Step.correct1.Model.Beam.Mode = ARRAY_FACTOR\n',
+        'Step.correct1.Model.Beam.Enable = {0}\n'.format(beam_enable),
+        'Step.correct1.Model.Beam.Mode = {0}\n'.format(beam_mode),
         'Step.correct1.Model.Beam.UseChannelFreq = T\n',
         'Step.correct1.Model.Gain.Enable = F\n']
     if noTEC:
@@ -180,11 +197,11 @@ def makeCorrectParset(outdir, noTEC=False):
 
 def calibrateBBS(msname_parmdb):
     """Runs BBS with a phase-only, dir-independent calibration with screen included"""
-    msname, parmdb, skymodel, solint = msname_parmdb
+    msname, parmdb, skymodel, solint, beam = msname_parmdb
     root_dir = '/'.join(msname.split('/')[:-1])
 
     # Do dir-independent calibration with TEC screen included
-    parset = makeNonDirParset(root_dir, solint=int(solint))
+    parset = makeNonDirParset(root_dir, solint=int(solint), beam_mode=beam)
     if skymodel == '':
         skymodel = root_dir + '/none'
         os.system("touch {0}".format(skymodel))
@@ -245,6 +262,8 @@ if __name__=='__main__':
         'calibration runs [default: %default]', type='int', default='8')
     opt.add_option('-v', '--verbose', help='Set verbose output and interactive '
         'mode [default: %default]', action='store_true', default=False)
+    opt.add_option('-B', '--beam', help='Beam mode to use during peeling. Use OFF '
+        'to disable the beam [default: %default]', type='str', default='ARRAY_FACTOR')
     opt.add_option('-c', '--clobber', help='Clobber existing output files? '
         '[default: %default]', action='store_true', default=False)
     (options, args) = opt.parse_args()
@@ -292,13 +311,14 @@ if __name__=='__main__':
         log.info('Performing calibration with screens included...')
         skymodel_list = [options.model] * len(ms_list)
         solint_list = [options.solint] * len(ms_list)
+        beam_list = [options.beam] * len(ms_list)
         workers = Pool(processes=min(len(ms_list), options.ncores))
         if options.gaincal:
             workers.map(calibrateNDPPP, zip(ms_list, out_parmdb_list,
                 skymodel_list, solint_list))
         else:
             workers.map(calibrateBBS, zip(ms_list, out_parmdb_list,
-                skymodel_list, solint_list))
+                skymodel_list, solint_list, beam_list))
 
         log.info('TEC screen application complete.')
 
