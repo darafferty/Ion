@@ -897,7 +897,6 @@ def run_chunk(chunk_obj, lock):
     lock.release()
 
     # Clean up
-    log.debug('run_chunk(): Clean up...')
     os.system('rm -rf {0}*'.format(chunk_obj.output))
     if os.path.exists(chunk_obj.output):
         os.system('rm -rf {0}*'.format(chunk_obj.output))
