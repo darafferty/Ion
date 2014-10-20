@@ -829,8 +829,12 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
             for chunk in chunk_list:
                 if os.path.exists(chunk_obj.output):
                     last_part = chunk_obj.chunk
-            log.info('Resuming time-correlated calibration from solution #{0}'.format(last_part))
             chunk_list = chunk_list[last_part:]
+            if len(chunk_list) > 0:
+                log.info('Resuming time-correlated calibration from solution #{0}'.format(last_part))
+            else:
+                log.info('Peeling complete. Nothing to resume.")
+                return
 
         manager = multiprocessing.Manager()
         pool = multiprocessing.Pool(ncores)
@@ -839,6 +843,9 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
             pool.apply_async(func=run_chunk, args=(chunk_obj, lock))
         pool.close()
         pool.join()
+
+        # Record completion
+
 
 
 def run_chunk(chunk_obj, lock):
