@@ -164,6 +164,8 @@ if __name__=='__main__':
             log = logging.getLogger("Main")
         elif options.clobber:
             subprocess.call("rm -rf {0}".format(outdir), shell=True)
+            if os.path.isdir(outdir):
+                subprocess.call("rm -rf {0}".format(outdir), shell=True)
             os.mkdir(outdir)
             logfilename = outdir + '/' + outfile + '.log'
             init_logger(logfilename, debug=options.verbose)
