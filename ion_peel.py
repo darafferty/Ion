@@ -403,7 +403,6 @@ if __name__=='__main__':
                 else:
                     loglevel = logging.INFO
                 lb = loadbalance.LoadBalance(ppn=1, logfile=None, loglevel=logging.DEBUG)
-                lb.set_retries(5)
                 lb.sync_import('from Ion.ion_libs import *')
 
                 # With torque PBS, the number of bands to process in parallel is
