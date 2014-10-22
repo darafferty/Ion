@@ -1000,45 +1000,43 @@ def split_ms(msin, msout, start_out, end_out):
     t.close()
 
 
-
-
 def modify_weights(msname, ionfactor, dryrun=False, ntot=None, trim_start=True):
     """Modifies the WEIGHTS column of the input MS"""
     t = pt.table(msname, readonly=False, ack=False)
-    freq_tab = pt.table(msname + '/SPECTRAL_WINDOW', ack=False)
-    freq = freq_tab.getcol('REF_FREQUENCY')
+    freqtab = pt.table(msname + '/SPECTRAL_WINDOW', ack=False)
+    freq = freqtab.getcol('REF_FREQUENCY')
+    freqtab.close()
     wav = 3e8 / freq
     anttab = pt.table(msname + '/ANTENNA', ack=False)
     antlist = anttab.getcol('NAME')
+    anttab.close()
     fwhm_list = []
 
-    for t2 in t.iter(["ANTENNA1","ANTENNA2"]):
-        if (t2.getcell('ANTENNA1',0)) < (t2.getcell('ANTENNA2',0)):
+    for t2 in t.iter(["ANTENNA1", "ANTENNA2"]):
+        if (t2.getcell('ANTENNA1', 0)) < (t2.getcell('ANTENNA2', 0)):
             weightscol = t2.getcol('WEIGHT_SPECTRUM')
             uvw = t2.getcol('UVW')
-            uvw_dist = np.sqrt(uvw[:,0]**2 + uvw[:,1]**2 + uvw[:,2]**2)
+            uvw_dist = np.sqrt(uvw[:, 0]**2 + uvw[:, 1]**2 + uvw[:, 2]**2)
             weightscol_modified = np.copy(weightscol)
             timepersample = t2[1]['TIME'] - t2[0]['TIME']
             dist = np.mean(uvw_dist) / 1e3
             stddev = ionfactor * np.sqrt((25e3 / dist)) * (freq / 60e6) # in sec
             fwhm = 2.3548 * stddev
             fwhm_list.append(fwhm[0])
+            if ntot is None:
+                ntot = len(weightscol[:, 0, 0])
 
             if not dryrun:
-                for pol in range(0,len(weightscol[0,0,:])):
-                    for chan in range(0,len(weightscol[0,:,0])):
-                        weights = weightscol[:,chan,pol]
-
-                if ntot is None:
-                    ntot = len(weights)
-                gauss = scipy.signal.gaussian(ntot, stddev/timepersample)
-                if trim_start:
-                    weightscol_modified[:,chan,pol] = weights * gauss[ntot-len(weights):]
-                else:
-                    weightscol_modified[:,chan,pol] = weights * gauss[:len(weights)]
-                t.putcol('WEIGHT_SPECTRUM', weightscol_modified)
+                for pol in range(0, len(weightscol[0, 0, :])):
+                    for chan in range(0, len(weightscol[0, :, 0])):
+                        weights = weightscol[:, chan, pol]
+                        gauss = scipy.signal.gaussian(ntot, stddev/timepersample)
+                        if trim_start:
+                            weightscol_modified[:, chan, pol] = weights * gauss[ntot - len(weights):]
+                        else:
+                            weightscol_modified[:, chan, pol] = weights * gauss[:len(weights)]
+                        t2.putcol('WEIGHT_SPECTRUM', weightscol_modified)
     t.close()
-    freq_tab.close()
     return (min(fwhm_list), max(fwhm_list))
 
 
