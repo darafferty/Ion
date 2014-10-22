@@ -1025,17 +1025,17 @@ def modify_weights(msname, ionfactor, dryrun=False, ntot=None, trim_start=True):
             fwhm_list.append(fwhm[0])
             if ntot is None:
                 ntot = len(weightscol[:, 0, 0])
+            gauss = scipy.signal.gaussian(ntot, stddev/timepersample)
 
             if not dryrun:
                 for pol in range(0, len(weightscol[0, 0, :])):
                     for chan in range(0, len(weightscol[0, :, 0])):
                         weights = weightscol[:, chan, pol]
-                        gauss = scipy.signal.gaussian(ntot, stddev/timepersample)
                         if trim_start:
                             weightscol_modified[:, chan, pol] = weights * gauss[ntot - len(weights):]
                         else:
                             weightscol_modified[:, chan, pol] = weights * gauss[:len(weights)]
-                        t2.putcol('WEIGHT_SPECTRUM', weightscol_modified)
+                t2.putcol('WEIGHT_SPECTRUM', weightscol_modified)
     t.close()
     return (min(fwhm_list), max(fwhm_list))
 
