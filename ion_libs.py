@@ -367,8 +367,9 @@ def setup_peeling(band):
 
 def peel_band(band):
     """Performs peeling on a band using BBS"""
-    logfilename = band.outdir + '/logs/' + band.msname + '.peel_band.log'
-    init_logger(logfilename)
+    if band.init_logger:
+        logfilename = band.outdir + '/logs/' + band.msname + '.peel_band.log'
+        init_logger(logfilename)
     log = logging.getLogger("Peeler")
 
     # Check if peeling is required
@@ -999,6 +1000,8 @@ def split_ms(msin, msout, start_out, end_out):
     t.close()
 
 
+
+
 def modify_weights(msname, ionfactor, dryrun=False, ntot=None, trim_start=True):
     """Modifies the WEIGHTS column of the input MS"""
     t = pt.table(msname, readonly=False, ack=False)
@@ -1033,7 +1036,7 @@ def modify_weights(msname, ionfactor, dryrun=False, ntot=None, trim_start=True):
                     weightscol_modified[:,chan,pol] = weights * gauss[ntot-len(weights):]
                 else:
                     weightscol_modified[:,chan,pol] = weights * gauss[:len(weights)]
-                t2.putcol('WEIGHT_SPECTRUM', weightscol_modified)
+                t.putcol('WEIGHT_SPECTRUM', weightscol_modified)
     t.close()
     freq_tab.close()
     return (min(fwhm_list), max(fwhm_list))

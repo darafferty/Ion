@@ -379,6 +379,7 @@ if __name__=='__main__':
             band.uvmin = options.uvmin
             band.peel_start_delay = 0.0
             band.resume = options.resume
+            band.init_logger = False
             if band.use_timecorr and (np.remainder(band.time_block, 2) or
                 np.remainder(band.time_block, band.solint_min)):
                 log.warning('For best results, the number of time samples in a '
@@ -409,9 +410,11 @@ if __name__=='__main__':
                 # With torque PBS, the number of bands to process in parallel is
                 # set by the PBS script, so the ncores option is used instead to
                 # set the number of processes per band (for time-correlated solve).
+                # Also set up delay and logging.
                 for i, band in enumerate(band_list):
                     band.ncores_per_cal = options.ncores
                     band.peel_start_delay = i * 60.0 # start delay in seconds to avoid too much disk IO
+                    band.init_logger = True # So that a new logger is started on each engine
 
                 # Map list of bands to the engines
                 ar = lb.map(peel_band, band_list)
