@@ -365,6 +365,22 @@ def setup_peeling(band):
     band.peel_bins = peel_bins
 
 
+def test_peel(band):
+    """Test peeling"""
+    if band.init_logger:
+        logfilename = band.outdir + '/logs/' + band.msname + '.test_peel_band.log'
+        init_logger(logfilename)
+    log = logging.getLogger("TestPeeler")
+    log.info('Performing averaging and peeling for {0}...\n'
+        '      Phase-only calibration: {4}\n'
+        '      See the following logs for details:\n'
+        '      - {3}/logs/ndppp_avg_{1}.log\n'
+        '      - {3}/logs/{2}_peeling_calibrate.log'.format(band.file, msname,
+        msname, band.outdir, band.phase_only))
+
+    return {'host':socket.gethostname(), 'name':band.msname}
+
+
 def peel_band(band):
     """Performs peeling on a band using BBS"""
     if band.init_logger:
@@ -897,12 +913,11 @@ def run_chunk(chunk_obj, lock):
 
     # Add new values
     pdb.addValues(parms)
+    del pdb
     lock.release()
 
     # Clean up
     os.system('rm -rf {0}*'.format(chunk_obj.output))
-    if os.path.exists(chunk_obj.output):
-        os.system('rm -rf {0}*'.format(chunk_obj.output))
     os.system('rm calibrate-stand-alone*.log')
 
 
