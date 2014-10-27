@@ -378,8 +378,6 @@ def test_peel(band):
         '      - {3}/logs/{2}_peeling_calibrate.log'.format(band.file, band.msname,
         band.msname, band.outdir, band.phase_only))
 
-    time.sleep(band.peel_start_delay)
-
     # Define file names
     msname = band.msname
     skymodel =  "{0}/skymodels/{1}.peeling.skymodel".format(band.outdir, msname)
@@ -410,6 +408,13 @@ def test_peel(band):
         subprocess.call("NDPPP {0} > {1}/logs/ndppp_avg_{2}.log 2>&1".format(p_shiftname,
             band.outdir, msname), shell=True)
 
+    # Perform the peeling. Do this step even if time-correlated solutions
+    # are desired so that the proper parmdb is made and so that the correlation
+    # time can be estimated
+#     if not band.resume:
+#         subprocess.call("calibrate-stand-alone -f {0} {1} {2} > {3}/logs/"
+#             "{4}_peeling_calibrate.log 2>&1".format(newmsname, peelparset,
+#             skymodel, band.outdir, msname), shell=True)
 
     return {'host':socket.gethostname(), 'name':band.msname}
 
