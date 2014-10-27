@@ -375,8 +375,41 @@ def test_peel(band):
         '      Phase-only calibration: {4}\n'
         '      See the following logs for details:\n'
         '      - {3}/logs/ndppp_avg_{1}.log\n'
+        '      - {3}/logs/{2}_peeling_calibrate.log'.format(band.file, band.msname,
+        band.msname, band.outdir, band.phase_only))
+
+    time.sleep(band.peel_start_delay)
+
+    # Define file names
+    msname = band.msname
+    skymodel =  "{0}/skymodels/{1}.peeling.skymodel".format(band.outdir, msname)
+    p_shiftname = "{0}/parsets/peeling_shift_{1}.parset".format(band.outdir,
+        msname)
+    peelparset = "{0}/parsets/{1}.peeling.parset".format(band.outdir,
+        msname)
+
+    # Make a copy of the MS for peeling and average if desired
+    newmsname = "{0}/{1}.peeled".format(band.outdir, msname)
+    log.info('Performing averaging and peeling for {0}...\n'
+        '      Phase-only calibration: {4}\n'
+        '      See the following logs for details:\n'
+        '      - {3}/logs/ndppp_avg_{1}.log\n'
         '      - {3}/logs/{2}_peeling_calibrate.log'.format(band.file, msname,
         msname, band.outdir, band.phase_only))
+    if not band.resume:
+        f = open(p_shiftname, 'w')
+        f.write("msin={0}\n"
+            "msin.datacolumn=CORRECTED_DATA\n"
+            "msout={1}\n"
+            "msin.startchan = 0\n"
+            "msin.nchan = 0\n"
+            "steps = [avg]\n"
+            "avg.type = average\n"
+            "avg.freqstep = {2}".format(band.file, newmsname, band.navg))
+        f.close()
+        subprocess.call("NDPPP {0} > {1}/logs/ndppp_avg_{2}.log 2>&1".format(p_shiftname,
+            band.outdir, msname), shell=True)
+
 
     return {'host':socket.gethostname(), 'name':band.msname}
 
