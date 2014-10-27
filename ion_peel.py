@@ -417,8 +417,8 @@ if __name__=='__main__':
                     band.init_logger = True # So that a new logger is started on each engine
 
                 # Map list of bands to the engines
-#                 ar = lb.map(peel_band, band_list)
-                ar = lb.map(test_peel, band_list)
+                ar = lb.map(peel_band, band_list)
+#                 ar = lb.map(test_peel, band_list)
                 for r in ar:
                     log.info("Peeling of %s finished on %s"%(r['name'], r['host']))
 

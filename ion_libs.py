@@ -952,11 +952,12 @@ def run_chunk(chunk_obj, lock):
     # Add new values
     pdb.addValues(parms)
     del pdb
+    del pdb_part
     lock.release()
 
     # Clean up
-    os.system('rm -rf {0}*'.format(chunk_obj.output))
-    os.system('rm calibrate-stand-alone*.log')
+    subprocess.Popen('rm -rf {0}*'.format(chunk_obj.output), shell=True)
+    subprocess.Popen('rm calibrate-stand-alone*.log', shell=True)
 
 
 def calibrate_chunk(chunk_obj):
