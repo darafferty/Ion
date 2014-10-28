@@ -895,17 +895,44 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
 
         manager = multiprocessing.Manager()
         pool = multiprocessing.Pool(ncores)
-        lock = manager.Lock()
         for chunk_obj in chunk_list:
-            pool.apply_async(func=run_chunk, args=(chunk_obj, lock))
+            pool.apply_async(func=run_chunk, args=chunk_obj)
         pool.close()
         pool.join()
 
-        # Record completion
+    # Copy over the solutions to the final parmdb
+    pdb = lofar.parmdb.parmdb(instrument_out)
+    parms = pdb.getValuesGrid("*")
+    parms_old = pdb.getValuesGrid("*")
+    for chunk_obj in chunk_list:
+        instrument_input = chunk_obj.output + '/instrument'
+        pdb_part = lofar.parmdb.parmdb(instrument_input)
+        parms_part = pdb_part.getValuesGrid("*")
+        keynames = parms_part.keys()
+
+        # Replace old value with new
+        for key in keynames:
+        # Hard-coded to look for Phase and/or TEC parms
+        # Presumably OK to use other parms with additional 'or' statments
+            if 'Phase' in key or 'TEC' in key:
+                tmp1 = np.copy(parms[key]['values'][:,0])
+                tmp1[chunk_obj.solnum] = np.copy(parms_part[key]['values'][0,0])
+                parms[key]['values'][:,0] = tmp1
+        del pdb_part
+
+    # Remove previous parmdb values
+    for line in parms_old:
+        pdb.deleteValues(line)
+
+    # Add new values
+    pdb.addValues(parms)
+    del pdb
+
+    # Clean up
+    subprocess.Popen('rm -rf part*{0}*'.format(os.path.basename(chunk_list[0].dataset)), shell=True)
 
 
-
-def run_chunk(chunk_obj, lock):
+def run_chunk(chunk_obj):
     """
     run time correlated calibration process for a single chunk.
     1. split data
@@ -915,49 +942,15 @@ def run_chunk(chunk_obj, lock):
     """
     log = logging.getLogger("Run_chunk")
 
-    instrument_orig  = chunk_obj.dataset+'/instrument'
-    instrument_out = chunk_obj.dataset+'/instrument_out'
-
     # Split the dataset into parts
     split_ms(chunk_obj.dataset, chunk_obj.output, chunk_obj.t0, chunk_obj.t1)
 
     # Calibrate
     calibrate_chunk(chunk_obj)
 
-    # Copy over the solutions to the final parmdb
-    # Lock parmdb
-    lock.acquire()
-    pdb = lofar.parmdb.parmdb(instrument_out)
-    parms = pdb.getValuesGrid("*")
-    parms_old = pdb.getValuesGrid("*")
-
-    instrument_input = chunk_obj.output + '/instrument'
-    pdb_part = lofar.parmdb.parmdb(instrument_input)
-    parms_part = pdb_part.getValuesGrid("*")
-    keynames = parms_part.keys()
-
-    # Replace old value with new
-    for key in keynames:
-	# Hard-coded to look for Phase and/or TEC parms
-	# Presumably OK to use other parms with additional 'or' statments
-        if 'Phase' in key or 'TEC' in key:
-            tmp1=np.copy(parms[key]['values'][:,0])
-            tmp1[chunk_obj.solnum] = np.copy(parms_part[key]['values'][0,0])
-            parms[key]['values'][:,0] = tmp1
-
-    # Remove previous parmdb values
-    for line in parms_old:
-        pdb.deleteValues(line)
-
-    # Add new values
-    pdb.addValues(parms)
-    del pdb
-    del pdb_part
-    lock.release()
-
-    # Clean up
-    subprocess.Popen('rm -rf {0}*'.format(chunk_obj.output), shell=True)
-    subprocess.Popen('rm calibrate-stand-alone*.log', shell=True)
+    # Clean up, leaving instrument parmdb for later collection
+    cmd = """find {0}/* | grep -v "instrument" | xargs rm -rf """.format(chunk_obj.output)
+    subprocess.Popen(cmd, shell=True)
 
 
 def calibrate_chunk(chunk_obj):

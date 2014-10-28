@@ -199,203 +199,217 @@ if __name__=='__main__':
 
         # Make a master sky model from which calibrators will be chosen. The flux
         # cut is set to 10% of the input flux cutoff.
-        log.info('Searching sky model for suitable calibrators...')
-        if options.gsm is not None:
-            master_skymodel = os.path.abspath(options.gsm)
-        else:
-            master_skymodel = outdir + '/skymodels/potential_calibrators.skymodel'
-            subprocess.call("gsm.py {0} {1} {2} {3} {4} 2>/dev/null".format(master_skymodel,
-                sky_ra, sky_dec, sky_radius, options.fluxcut/10.0), shell=True)
+        if not options.resume:
+            log.info('Searching sky model for suitable calibrators...')
+            if options.gsm is not None:
+                master_skymodel = os.path.abspath(options.gsm)
+            else:
+                master_skymodel = outdir + '/skymodels/potential_calibrators.skymodel'
+                subprocess.call("gsm.py {0} {1} {2} {3} {4} 2>/dev/null".format(master_skymodel,
+                    sky_ra, sky_dec, sky_radius, options.fluxcut/10.0), shell=True)
 
-        if options.patches:
-            log.info('  Tessellating the sky model...')
-            patch_skymodel = outdir + '/skymodels/potential_calibrators_patches.skymodel'
-            s = lsmtool.load(master_skymodel)
-            s.group(options.patchtype, targetFlux=options.fluxbin,
-                numClusters=options.numclusters)
-            s.setPatchPositions(method='mid')
-            if options.verbose:
-                print('Showing tessellated sky model. Close the plot window to continue.')
-                s.plot()
-            s.write(patch_skymodel, clobber=options.clobber)
-
-        # Determine potential calibrators for each band and field.
-        if options.patches:
-            master_skymodel = patch_skymodel
-        if options.majcut is not None:
-            majcut_arcsec = options.majcut * 60.0
-        else:
-            majcut_arcsec = None
-        if options.beam.lower() == 'off':
-            applyBeam = False
-        else:
-            applyBeam = True
-        cal_sets = []
-        for field in field_list:
-            for band in field.bands:
-                band.master_skymodel = master_skymodel
-                if options.lsm:
-                    skymodel = band.file + '.skymodel'
-                    if not os.path.exists(skymodel):
-                        skymodel = band.file.split('.')[0] + '.skymodel'
-                    band.skymodel = skymodel
-                else:
-                    band.skymodel = master_skymodel
-                cal_names, cal_fluxes, cal_sizes, hasPatches = find_calibrators(master_skymodel,
-                    band.file, options.fluxcut, majcut_arcsec, plot=options.verbose,
-                    applyBeam=applyBeam, band_skymodel=band.skymodel)
+            if options.patches:
+                log.info('  Tessellating the sky model...')
+                patch_skymodel = outdir + '/skymodels/potential_calibrators_patches.skymodel'
+                s = lsmtool.load(master_skymodel)
+                s.group(options.patchtype, targetFlux=options.fluxbin,
+                    numClusters=options.numclusters)
+                s.setPatchPositions(method='mid')
                 if options.verbose:
-                    prompt = "Press enter to continue or 'q' to quit... : "
-                    answ = raw_input(prompt)
-                    while answ != '':
-                        if answ == 'q':
-                            sys.exit()
+                    print('Showing tessellated sky model. Close the plot window to continue.')
+                    s.plot()
+                s.write(patch_skymodel, clobber=options.clobber)
+
+            # Determine potential calibrators for each band and field.
+            if options.patches:
+                master_skymodel = patch_skymodel
+            if options.majcut is not None:
+                majcut_arcsec = options.majcut * 60.0
+            else:
+                majcut_arcsec = None
+            if options.beam.lower() == 'off':
+                applyBeam = False
+            else:
+                applyBeam = True
+            cal_sets = []
+            for field in field_list:
+                for band in field.bands:
+                    band.master_skymodel = master_skymodel
+                    if options.lsm:
+                        skymodel = band.file + '.skymodel'
+                        if not os.path.exists(skymodel):
+                            skymodel = band.file.split('.')[0] + '.skymodel'
+                        band.skymodel = skymodel
+                    else:
+                        band.skymodel = master_skymodel
+                    cal_names, cal_fluxes, cal_sizes, hasPatches = find_calibrators(master_skymodel,
+                        band.file, options.fluxcut, majcut_arcsec, plot=options.verbose,
+                        applyBeam=applyBeam, band_skymodel=band.skymodel)
+                    if options.verbose:
+                        prompt = "Press enter to continue or 'q' to quit... : "
                         answ = raw_input(prompt)
+                        while answ != '':
+                            if answ == 'q':
+                                sys.exit()
+                            answ = raw_input(prompt)
 
-                band.cal_names = cal_names
-                band.cal_apparent_fluxes = cal_fluxes
-                band.cal_sizes = cal_sizes
-                band.master_skymodel = master_skymodel
-                band.use_patches = hasPatches
+                    band.cal_names = cal_names
+                    band.cal_apparent_fluxes = cal_fluxes
+                    band.cal_sizes = cal_sizes
+                    band.master_skymodel = master_skymodel
+                    band.use_patches = hasPatches
 
-        # Make a list of all calibrators and bands.
-        cal_names = []
-        band_names = []
-        for field in field_list:
-            for band in field.bands:
-                cal_names += band.cal_names
-                band_names.append(band.name)
-        cal_names_set = set(cal_names)
-        band_names_set = set(band_names)
+            # Make a list of all calibrators and bands.
+            cal_names = []
+            band_names = []
+            for field in field_list:
+                for band in field.bands:
+                    cal_names += band.cal_names
+                    band_names.append(band.name)
+            cal_names_set = set(cal_names)
+            band_names_set = set(band_names)
 
-        # Eliminate duplicate calibrators by selecting brightest one in each band
-        # if there is more than one field.
-        if len(field_list) > 1:
-            # Loop over calibrators and remove them from bands in which they are
-            # not the brightest.
-            for band_name in band_names_set:
-                for cal_name in cal_names_set:
-                    max_cal_apparent_flux = 0.0
+            # Eliminate duplicate calibrators by selecting brightest one in each band
+            # if there is more than one field.
+            if len(field_list) > 1:
+                # Loop over calibrators and remove them from bands in which they are
+                # not the brightest.
+                for band_name in band_names_set:
+                    for cal_name in cal_names_set:
+                        max_cal_apparent_flux = 0.0
 
-                    # For each band and calibrator, find the field in which it
-                    # is brightest.
-                    max_cal_field_name = field_list[0].name
-                    for field in field_list:
-                        for band in field.bands:
-                            if cal_name in band.cal_names and band.name == band_name:
-                                indx = band.cal_names.index(cal_name)
-                                if band.cal_apparent_fluxes[indx] > max_cal_apparent_flux:
-                                    max_cal_apparent_flux = band.cal_apparent_fluxes[indx]
-                                    max_cal_field_name = field.name
-
-                    # Now remove all but the brightest calibrator.
-                    for field in field_list:
-                        if field.name != max_cal_field_name:
+                        # For each band and calibrator, find the field in which it
+                        # is brightest.
+                        max_cal_field_name = field_list[0].name
+                        for field in field_list:
                             for band in field.bands:
                                 if cal_name in band.cal_names and band.name == band_name:
                                     indx = band.cal_names.index(cal_name)
-                                    band.cal_names.pop(indx)
-                                    band.cal_apparent_fluxes.pop(indx)
-                                    band.cal_sizes.pop(indx)
+                                    if band.cal_apparent_fluxes[indx] > max_cal_apparent_flux:
+                                        max_cal_apparent_flux = band.cal_apparent_fluxes[indx]
+                                        max_cal_field_name = field.name
 
-        # Remove calibrators that do not appear in enough bands (set by
-        # options.nbands)
-        cals_to_remove = []
-        if len(cal_names_set) == 1:
-            caltxt = 'calibrator'
-        else:
-            caltxt = 'calibrators'
-        if options.majcut is None:
-            logtxt = '{0} {1} found (Sint > {2} Jy):'.format(
-                len(cal_names_set), caltxt, options.fluxcut)
-        else:
-            logtxt = '{0} {1} found (Sint > {2} Jy; Maj < {3} arcmin):'.format(
-                len(cal_names_set), caltxt, options.fluxcut, options.majcut)
-        for cal_name in cal_names_set:
-            nbands = 0
-            for field in field_list:
-                for band in field.bands:
-                    if cal_name in band.cal_names:
-                        nbands += 1
-            if nbands < options.nbands:
-                cals_to_remove.append(cal_name)
-            logtxt += "\n      '{0}': {1} bands".format(cal_name, nbands)
-        log.info(logtxt)
+                        # Now remove all but the brightest calibrator.
+                        for field in field_list:
+                            if field.name != max_cal_field_name:
+                                for band in field.bands:
+                                    if cal_name in band.cal_names and band.name == band_name:
+                                        indx = band.cal_names.index(cal_name)
+                                        band.cal_names.pop(indx)
+                                        band.cal_apparent_fluxes.pop(indx)
+                                        band.cal_sizes.pop(indx)
 
-        if len(cals_to_remove) > 0:
-            for field in field_list:
-                for band in field.bands:
-                    for cal_name in band.cal_names[:]:
-                        if cal_name in cals_to_remove:
-                            indx = band.cal_names.index(cal_name)
-                            band.cal_names.pop(indx)
-                            band.cal_apparent_fluxes.pop(indx)
-                            band.cal_sizes.pop(indx)
-        cal_names_final = []
-        for cal_name in cal_names_set:
-            nbands = 0
-            for field in field_list:
-                for band in field.bands:
-                    if cal_name in band.cal_names:
-                        cal_names_final.append(cal_name)
-        cal_names_set = set(cal_names_final)
-        log.info('{0} {1} available in {2} or more bands'.format(
-            len(cal_names_set), caltxt, options.nbands))
-        if len(cal_names_set) == 0:
-            sys.exit()
-        if options.verbose:
-            prompt = "Press enter to continue or 'q' to quit... : "
-            answ = raw_input(prompt)
-            while answ != '':
-                if answ == 'q':
-                    sys.exit()
+            # Remove calibrators that do not appear in enough bands (set by
+            # options.nbands)
+            cals_to_remove = []
+            if len(cal_names_set) == 1:
+                caltxt = 'calibrator'
+            else:
+                caltxt = 'calibrators'
+            if options.majcut is None:
+                logtxt = '{0} {1} found (Sint > {2} Jy):'.format(
+                    len(cal_names_set), caltxt, options.fluxcut)
+            else:
+                logtxt = '{0} {1} found (Sint > {2} Jy; Maj < {3} arcmin):'.format(
+                    len(cal_names_set), caltxt, options.fluxcut, options.majcut)
+            for cal_name in cal_names_set:
+                nbands = 0
+                for field in field_list:
+                    for band in field.bands:
+                        if cal_name in band.cal_names:
+                            nbands += 1
+                if nbands < options.nbands:
+                    cals_to_remove.append(cal_name)
+                logtxt += "\n      '{0}': {1} bands".format(cal_name, nbands)
+            log.info(logtxt)
+
+            if len(cals_to_remove) > 0:
+                for field in field_list:
+                    for band in field.bands:
+                        for cal_name in band.cal_names[:]:
+                            if cal_name in cals_to_remove:
+                                indx = band.cal_names.index(cal_name)
+                                band.cal_names.pop(indx)
+                                band.cal_apparent_fluxes.pop(indx)
+                                band.cal_sizes.pop(indx)
+            cal_names_final = []
+            for cal_name in cal_names_set:
+                nbands = 0
+                for field in field_list:
+                    for band in field.bands:
+                        if cal_name in band.cal_names:
+                            cal_names_final.append(cal_name)
+            cal_names_set = set(cal_names_final)
+            log.info('{0} {1} available in {2} or more bands'.format(
+                len(cal_names_set), caltxt, options.nbands))
+            if len(cal_names_set) == 0:
+                sys.exit()
+            if options.verbose:
+                prompt = "Press enter to continue or 'q' to quit... : "
                 answ = raw_input(prompt)
+                while answ != '':
+                    if answ == 'q':
+                        sys.exit()
+                    answ = raw_input(prompt)
 
-        # Make list of bands to peel and set their options
-        band_list = []
-        freq_list = []
-        for field in field_list:
-            for band in field.bands:
-                band_list.append(band)
-                freq_list.append(band.freq)
-        for band in band_list:
-            # For each Band instance, set options
-            band.beam_mode = options.beam
-            band.do_peeling = True
-            band.nsrc_per_bin = 1
-            band.use_scalar_phase = True
-            band.use_timecorr = options.timecorr
-            band.phase_only = False
-            band.solint_min = options.solint
-            band.navg = options.navg
-            band.solint_amp = 330
-            band.time_block = 60 # number of time samples in a block
-            band.flag_filler = False # flag filler solutions
-            band.ionfactor = options.ionfactor
-            band.ncores_per_cal = 3
-            band.do_each_cal_sep = False
-            band.scale_solint = options.scale
-            band.do_dirindep = options.dirindep
-            band.uvmin = options.uvmin
-            band.peel_start_delay = 0.0
-            band.resume = options.resume
-            band.init_logger = False
-            if band.use_timecorr and (np.remainder(band.time_block, 2) or
-                np.remainder(band.time_block, band.solint_min)):
-                log.warning('For best results, the number of time samples in a '
-                    'block should be evenly divisble both by 2 and by the '
-                    'solution interval')
+            # Make list of bands to peel and set their options
+            band_list = []
+            freq_list = []
+            for field in field_list:
+                for band in field.bands:
+                    band_list.append(band)
+                    freq_list.append(band.freq)
+            for band in band_list:
+                # For each Band instance, set options
+                band.beam_mode = options.beam
+                band.do_peeling = True
+                band.nsrc_per_bin = 1
+                band.use_scalar_phase = True
+                band.use_timecorr = options.timecorr
+                band.phase_only = False
+                band.solint_min = options.solint
+                band.navg = options.navg
+                band.solint_amp = 330
+                band.time_block = 60 # number of time samples in a block
+                band.flag_filler = False # flag filler solutions
+                band.ionfactor = options.ionfactor
+                band.ncores_per_cal = 3
+                band.do_each_cal_sep = False
+                band.scale_solint = options.scale
+                band.do_dirindep = options.dirindep
+                band.uvmin = options.uvmin
+                band.peel_start_delay = 0.0
+                band.resume = options.resume
+                band.init_logger = False
+                if band.use_timecorr and (np.remainder(band.time_block, 2) or
+                    np.remainder(band.time_block, band.solint_min)):
+                    log.warning('For best results, the number of time samples in a '
+                        'block should be evenly divisble both by 2 and by the '
+                        'solution interval')
 
-        # Set up peeling. Since the band objects are altered, this is a bit
-        # tricky to parallelize, so just do it serially.
-        for band in band_list:
-            setup_peeling(band)
+            # Set up peeling. Since the band objects are altered, this is a bit
+            # tricky to parallelize, so just do it serially.
+            for band in band_list:
+                setup_peeling(band)
 
-        # Perform peeling for each band. The peel_band script will split up the
-        # calibrators for each band into sets for peeling.
-        for band in band_list[:]:
-            if not band.do_peeling:
-                band_list.remove(band)
+            # Perform peeling for each band. The peel_band script will split up the
+            # calibrators for each band into sets for peeling.
+            for band in band_list[:]:
+                if not band.do_peeling:
+                    band_list.remove(band)
+
+            # Save bands to file for later resume
+            save_file = outdir + '/' + outfile + '.sav'
+            pickle.dump( band_list, open( save_file, "wb" ) )
+
+        else:
+            try:
+                save_file = outdir + '/' + outfile + '.sav'
+                band_list = pickle.load( open( save_file, "rb" ) )
+            except:
+                log.error('Could not load saved results. Resume not possible.')
+                sys.exit()
+
         if not options.dryrun:
             if has_ipy_parallel and options.torque:
                 log.info('Distributing peeling over nodes...')
@@ -427,6 +441,9 @@ if __name__=='__main__':
                 pool.map(peel_band, band_list)
                 pool.close()
                 pool.join()
+
+            # Clean up
+            subprocess.Popen('rm -rf calibrate-stand-alone*.log', shell=True)
 
             # Write all the solutions to an H5parm file for later use in LoSoTo.
             write_sols(field_list, outdir+'/'+outfile, flag_outliers=options.flag)
