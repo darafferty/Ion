@@ -54,6 +54,7 @@ import shutil
 import sys
 import glob
 import numpy as np
+import pickle
 try:
     import loadbalance
     has_ipy_parallel = True
@@ -432,7 +433,6 @@ if __name__=='__main__':
 
                 # Map list of bands to the engines
                 ar = lb.map(peel_band, band_list)
-#                 ar = lb.map(test_peel, band_list)
                 for r in ar:
                     log.info("Peeling of %s finished on %s"%(r['name'], r['host']))
 
