@@ -767,7 +767,6 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
         if solint < 1:
             solint = 1
 
-
         # Get time per sample and number of times
         t = pt.table(dataset, readonly=True, ack=False)
         for t2 in t.iter(["ANTENNA1","ANTENNA2"]):
@@ -796,8 +795,7 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
             trows, blockl, tlen*3600.0, nsols, ionfactor, fwhm_min, fwhm_max))
 
         # Update cellsize and chunk size of parset
-        if not resume:
-            update_parset(parset)
+        update_parset(parset)
 
         # Make a copy of the master parmdb to store time-correlated solutions
         # in, resetting and flagging as needed
