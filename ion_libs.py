@@ -884,8 +884,9 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
             # Try to determine last chunk that was run
             last_part = 0
             for chunk in chunk_list:
-                if os.path.exists(chunk_obj.output):
-                    last_part = chunk_obj.chunk
+                if os.path.exists('{0}/state/part{1}{2}.done'.format(chunk_obj.outdir,
+                    chunk_obj.chunk, os.path.basename(chunk_obj.dataset))):
+                    last_part = chunk_obj.chunk + 1
             chunk_list = chunk_list[last_part:]
             if len(chunk_list) > 0:
                 log.info('Resuming time-correlated calibration from solution #{0}'.format(last_part))
@@ -929,7 +930,8 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
         del pdb
 
         # Clean up
-        subprocess.Popen('rm -rf part*{0}*'.format(os.path.basename(chunk_list[0].dataset)), shell=True)
+        subprocess.Popen('rm -rf {0}/part*{1}*'.format(chunk_list[0].outdir,
+            os.path.basename(chunk_list[0].dataset)), shell=True)
 
 
 def run_chunk(chunk_obj):
@@ -950,6 +952,12 @@ def run_chunk(chunk_obj):
 
     # Clean up, leaving instrument parmdb for later collection
     cmd = """find {0}/* | grep -v "instrument" | xargs rm -rf """.format(chunk_obj.output)
+    subprocess.Popen(cmd, shell=True)
+
+    # Record successful completion
+    success_file = '{0}/state/part{1}{2}.done'.format(chunk_obj.outdir,
+                    chunk_obj.chunk, os.path.basename(chunk_obj.dataset))
+    cmd = 'touch {0}'.format(success_file)
     subprocess.Popen(cmd, shell=True)
 
 

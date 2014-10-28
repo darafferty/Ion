@@ -184,6 +184,8 @@ if __name__=='__main__':
             os.mkdir(outdir+"/logs")
         if not os.path.isdir(outdir+"/parsets"):
             os.mkdir(outdir+"/parsets")
+        if not os.path.isdir(outdir+"/state"):
+            os.mkdir(outdir+"/state")
         if os.path.exists(outfile):
             if options.clobber:
                 subprocess.call("rm -rf {0}".format(outfile), shell=True)
