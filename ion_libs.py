@@ -421,7 +421,12 @@ def test_peel(band):
 
 def peel_band(band):
     """Performs peeling on a band using BBS"""
-    print('Starting band {0}: {1}, {2}'.format(band.msname, band.init_logger, band.do_peeling))
+    f = open(band.outdir + '/' + band.msname + '.peel_band_test.log', 'w')
+    f.write('Starting band {0}: {1}, {2}'.format(band.msname, band.init_logger, band.do_peeling))
+    f.close()
+    f = open(band.outdir + '/logs/' + band.msname + '.peel_band_test.log', 'w')
+    f.write('Starting band {0}: {1}, {2}'.format(band.msname, band.init_logger, band.do_peeling))
+    f.close()
     if band.init_logger:
         logfilename = band.outdir + '/logs/' + band.msname + '.peel_band.log'
         init_logger(logfilename)
