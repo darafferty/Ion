@@ -364,60 +364,6 @@ def setup_peeling(band):
     band.peel_bins = peel_bins
 
 
-def test_peel(band):
-    """Test peeling"""
-    if band.init_logger:
-        logfilename = band.outdir + '/logs/' + band.msname + '.test_peel_band.log'
-        init_logger(logfilename)
-    log = logging.getLogger("TestPeeler")
-    log.info('Performing averaging and peeling for {0}...\n'
-        '      Phase-only calibration: {4}\n'
-        '      See the following logs for details:\n'
-        '      - {3}/logs/ndppp_avg_{1}.log\n'
-        '      - {3}/logs/{2}_peeling_calibrate.log'.format(band.file, band.msname,
-        band.msname, band.outdir, band.phase_only))
-
-    # Define file names
-    msname = band.msname
-    skymodel =  "{0}/skymodels/{1}.peeling.skymodel".format(band.outdir, msname)
-    p_shiftname = "{0}/parsets/peeling_shift_{1}.parset".format(band.outdir,
-        msname)
-    peelparset = "{0}/parsets/{1}.peeling.parset".format(band.outdir,
-        msname)
-
-    # Make a copy of the MS for peeling and average if desired
-    newmsname = "{0}/{1}.peeled".format(band.outdir, msname)
-    log.info('Performing averaging and peeling for {0}...\n'
-        '      Phase-only calibration: {4}\n'
-        '      See the following logs for details:\n'
-        '      - {3}/logs/ndppp_avg_{1}.log\n'
-        '      - {3}/logs/{2}_peeling_calibrate.log'.format(band.file, msname,
-        msname, band.outdir, band.phase_only))
-    if not band.resume:
-        f = open(p_shiftname, 'w')
-        f.write("msin={0}\n"
-            "msin.datacolumn=CORRECTED_DATA\n"
-            "msout={1}\n"
-            "msin.startchan = 0\n"
-            "msin.nchan = 0\n"
-            "steps = [avg]\n"
-            "avg.type = average\n"
-            "avg.freqstep = {2}".format(band.file, newmsname, band.navg))
-        f.close()
-        subprocess.call("NDPPP {0} > {1}/logs/ndppp_avg_{2}.log 2>&1".format(p_shiftname,
-            band.outdir, msname), shell=True)
-
-    # Perform the peeling. Do this step even if time-correlated solutions
-    # are desired so that the proper parmdb is made and so that the correlation
-    # time can be estimated
-#     if not band.resume:
-#         subprocess.call("calibrate-stand-alone -f {0} {1} {2} > {3}/logs/"
-#             "{4}_peeling_calibrate.log 2>&1".format(newmsname, peelparset,
-#             skymodel, band.outdir, msname), shell=True)
-
-    return {'host':socket.gethostname(), 'name':band.msname}
-
-
 def peel_band(band):
     """Performs peeling on a band using BBS"""
     if band.init_logger:
@@ -447,7 +393,7 @@ def peel_band(band):
         '      - {3}/logs/ndppp_avg_{1}.log\n'
         '      - {3}/logs/{2}_peeling_calibrate.log'.format(band.file, msname,
         msname, band.outdir, band.phase_only))
-    if not band.resume:
+    if not band.resume or (band.resume and not os.path.exists(newmsname)):
         f = open(p_shiftname, 'w')
         f.write("msin={0}\n"
             "msin.datacolumn=CORRECTED_DATA\n"
@@ -462,7 +408,9 @@ def peel_band(band):
             band.outdir, msname), shell=True)
 
     # Perform dir-independent calibration if desired
-    if band.do_dirindep and not band.resume:
+    if band.do_dirindep and not band.resume or (band.do_dirindep and band.resume
+        and not os.path.exists('{0}/state/{1}_dirindep.done'.format(band.outdir,
+        band.msname))):
         dirindep_parset = '{0}/parsets/{1}.dirindep.parset'.format(
             band.outdir, msname)
         make_dirindep_parset(dirindep_parset, scalar_phase=band.use_scalar_phase,
@@ -471,13 +419,25 @@ def peel_band(band):
             "{4}_dirindep_calibrate.log 2>&1".format(newmsname, dirindep_parset,
             skymodel, band.outdir, msname), shell=True)
 
+        # Save state
+        cmd = 'touch {0}/state/{1}_dirindep.done'.format(band.outdir,
+            band.msname)
+        subprocess.Popen(cmd, shell=True)
+
     # Perform the peeling. Do this step even if time-correlated solutions
     # are desired so that the proper parmdb is made and so that the correlation
     # time can be estimated
-    if not band.resume:
+    if not band.resume or (band.resume and
+        not os.path.exists('{0}/state/{1}_initialpeel.done'.format(band.outdir,
+        band.msname))):
         subprocess.call("calibrate-stand-alone -f {0} {1} {2} > {3}/logs/"
             "{4}_peeling_calibrate.log 2>&1".format(newmsname, peelparset,
             skymodel, band.outdir, msname), shell=True)
+
+        # Save state
+        cmd = 'touch {0}/state/{1}_initialpeel.done'.format(band.outdir,
+            band.msname)
+        subprocess.Popen(cmd, shell=True)
 
     if band.use_timecorr:
         # Do time-correlated peeling.
@@ -490,11 +450,10 @@ def peel_band(band):
 #        band.ionfactor = get_ionfactor(msname, instrument='instrument')
 
         # Make the parset and do the peeling
-        if not band.resume:
-            make_peeling_parset(peelparset_timecorr, band.peel_bins,
-                scalar_phase=band.use_scalar_phase, phase_only=True,
-                time_block=band.time_block, beam_mode=band.beam_mode,
-                uvmin=band.uvmin)
+        make_peeling_parset(peelparset_timecorr, band.peel_bins,
+            scalar_phase=band.use_scalar_phase, phase_only=True,
+            time_block=band.time_block, beam_mode=band.beam_mode,
+            uvmin=band.uvmin)
         calibrate(newmsname, peelparset_timecorr, skymodel, msname,
             use_timecorr=True, outdir=band.outdir, instrument='instrument',
             time_block=band.time_block, ionfactor=band.ionfactor,
@@ -842,7 +801,7 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
 
         # Make a copy of the master parmdb to store time-correlated solutions
         # in, resetting and flagging as needed
-        if not resume:
+        if not resume or (resume and not os.path.exists(instrument_out)):
             os.system('rm -rf ' +instrument_out)
             clean_and_copy_parmdb(instrument_orig, instrument_out, blockl,
                 flag_filler=flag_filler, msname=msname, timepersample=timepersample)

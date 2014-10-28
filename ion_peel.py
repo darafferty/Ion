@@ -402,12 +402,12 @@ if __name__=='__main__':
                     band_list.remove(band)
 
             # Save bands to file for later resume
-            save_file = outdir + '/' + outfile + '.sav'
+            save_file = outdir + '/state/' + outfile + '.sav'
             pickle.dump( band_list, open( save_file, "wb" ) )
 
         else:
             try:
-                save_file = outdir + '/' + outfile + '.sav'
+                save_file = outdir + '/state/' + outfile + '.sav'
                 band_list = pickle.load( open( save_file, "rb" ) )
             except:
                 log.error('Could not load saved results. Resume not possible.')
