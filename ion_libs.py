@@ -441,20 +441,41 @@ def peel_band(band):
 
     if band.use_timecorr:
         # Do time-correlated peeling.
-        peelparset_timecorr = '{0}/parsets/{1}.timecorr_peeling.parset'.format(
-            band.outdir, msname)
 
         # Estimate ionfactor from the non-time-correlated peeling solutions
         # TODO: allow ionfactor to vary with time -- maybe a dictionary of
         # {'ionfactor': [0.5, 0.3, 0.2], 'start_sol_num': [0, 24, 256]}?
 #        band.ionfactor = get_ionfactor(msname, instrument='instrument')
 
-        # Make the parset and do the peeling
+        # Subtract the field
+        subparset = '{0}/parsets/{1}.subtract_field.parset'.format(
+            band.outdir, msname)
+        make_subtract_parset(subparset, source_list=None, beam_mode=band.beam_mode,
+            output_column='SUBTRACTED_DATA')
+        subprocess.call("calibrate-stand-alone -f {0} {1} {2} > {3}/logs/"
+            "{4}_subtract_field.log 2>&1".format(newmsname, subparset,
+            skymodel, band.outdir, msname), shell=True)
+
+        # Make a new sky model with only the calibrators
+        cal_skymodel = skymodel + '.cals_only'
+        cal_list = []
+        for peel_bin in band.peel_bins:
+            cal_list += peel_bin['names']
+        s = lsmtool.load(skymodel)
+        if s.hasPatches:
+            s.select('Patch == [{0}]'.format(','.join(cal_list)))
+        else:
+            s.select('Name == [{0}]'.format(','.join(cal_list)))
+        s.write(cal_skymodel)
+
+        # Do the peeling
+        peelparset_timecorr = '{0}/parsets/{1}.timecorr_peeling.parset'.format(
+            band.outdir, msname)
         make_peeling_parset(peelparset_timecorr, band.peel_bins,
             scalar_phase=band.use_scalar_phase, phase_only=True,
             time_block=band.time_block, beam_mode=band.beam_mode,
-            uvmin=band.uvmin)
-        calibrate(newmsname, peelparset_timecorr, skymodel, msname,
+            uvmin=band.uvmin, skip_field=True, input_column='SUBTRACTED_DATA')
+        calibrate(newmsname, peelparset_timecorr, cal_skymodel, msname,
             use_timecorr=True, outdir=band.outdir, instrument='instrument',
             time_block=band.time_block, ionfactor=band.ionfactor,
             solint=band.solint_min, flag_filler=band.flag_filler,
@@ -524,8 +545,46 @@ def make_dirindep_parset(parset, scalar_phase=True, sol_int=1,
     f.close()
 
 
+def make_subtract_parset(parset, source_list=None, beam_mode='DEFAULT',
+    output_column='SUBTRACTED_DATA'):
+    """Makes a BBS parset for subtraction
+    """
+    if os.path.exists(parset):
+        return
+    if source_list is None:
+        source_list = ''
+
+    # Set overall strategy
+    nbins = len(peel_bins)
+    newlines = ['Strategy.InputColumn = DATA\n',
+        'Strategy.ChunkSize = {0}\n'.format(int(max(sol_int_list))),
+        'Strategy.Baselines = [CR]S*&\n',
+        'Strategy.UseSolver = F\n']
+    strategy_str = 'Strategy.Steps = [subtract]\n'
+    newlines += strategy_str
+
+    # Handle beam
+    if beam_mode.lower() == 'off':
+        beam_enable = 'F'
+        beam_mode = 'DEFAULT'
+    else:
+        beam_enable = 'T'
+
+    # Subtract sources
+    newlines += ['\n', 'Step.subtract.Operation = SUBTRACT\n',
+        'Step.subtract.Model.Sources = [{0}]\n'.format(source_list),
+        'Step.subtract.Model.Beam.Enable = {0}\n'.format(beam_enable),
+        'Step.subtract.Model.Beam.Mode = {0}\n'.format(beam_mode),
+        'Step.subtract.Output.Column = {0}\n'.format(output_column)]
+
+    f = open(parset, 'w')
+    f.writelines(newlines)
+    f.close()
+
+
 def make_peeling_parset(parset, peel_bins, scalar_phase=True, phase_only=True,
-    sol_int_amp=500, time_block=None, beam_mode='DEFAULT', uvmin=250.0):
+    sol_int_amp=500, time_block=None, beam_mode='DEFAULT', uvmin=250.0,
+    skip_field=False, input_column='DATA'):
     """Makes a BBS parset for peeling
 
     For best results, the sources should be peeled in order of decreasing flux.
@@ -546,23 +605,36 @@ def make_peeling_parset(parset, peel_bins, scalar_phase=True, phase_only=True,
 
     # Set overall strategy
     nbins = len(peel_bins)
-    newlines = ['Strategy.InputColumn = DATA\n',
+    newlines = ['Strategy.InputColumn = {0}\n'.format(input_column),
         'Strategy.ChunkSize = {0}\n'.format(int(max(sol_int_list))),
         'Strategy.Baselines = [CR]S*&\n',
         'Strategy.UseSolver = F\n']
     if phase_only:
         pstr = ''
-        strategy_str = 'Strategy.Steps = [subtractfield'
+        if not skip_field:
+            strategy_str = 'Strategy.Steps = [subtractfield'
+        else:
+            strategy_str = 'Strategy.Steps = ['
         for i, peel_bin in enumerate(peel_bins):
-            strategy_str += ', add{0}, solve{0}'.format(i+1)
+            if i == 0 and skip_field:
+                strategy_str += 'add{0}, solve{0}'.format(i+1)
+            else:
+                strategy_str += ', add{0}, solve{0}'.format(i+1)
+
             if i < nbins - 1:
                 strategy_str += ', subtract{0}'.format(i+1)
         strategy_str += ']\n'
     else:
         pstr = 'p'
-        strategy_str = 'Strategy.Steps = [subtractfield'
+        if not skip_field:
+            strategy_str = 'Strategy.Steps = [subtractfield'
+        else:
+            strategy_str = 'Strategy.Steps = ['
         for i, peel_bin in enumerate(peel_bins):
-            strategy_str += ', add{0}, solvep{0}, solvea{0}'.format(i+1)
+            if i == 0 and skip_field:
+                strategy_str += 'add{0}, solvep{0}, solvea{0}'.format(i+1)
+            else:
+                strategy_str += ', add{0}, solvep{0}, solvea{0}'.format(i+1)
             if i < nbins - 1:
                 strategy_str += ', subtract{0}'.format(i+1)
         strategy_str += ']\n'
@@ -576,11 +648,12 @@ def make_peeling_parset(parset, peel_bins, scalar_phase=True, phase_only=True,
         beam_enable = 'T'
 
     # Subtract field (all sources)
-    newlines += ['\n', 'Step.subtractfield.Operation = SUBTRACT\n',
-        'Step.subtractfield.Model.Sources = []\n',
-        'Step.subtractfield.Model.Beam.Enable = {0}\n'.format(beam_enable),
-        'Step.subtractfield.Model.Beam.Mode = {0}\n'.format(beam_mode),
-        '\n']
+    if not skip_field:
+        newlines += ['\n', 'Step.subtractfield.Operation = SUBTRACT\n',
+            'Step.subtractfield.Model.Sources = []\n',
+            'Step.subtractfield.Model.Beam.Enable = {0}\n'.format(beam_enable),
+            'Step.subtractfield.Model.Beam.Mode = {0}\n'.format(beam_mode),
+            '\n']
 
     for i, peel_bin in enumerate(peel_bins):
         # Add sources in current bin
@@ -837,17 +910,15 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
             chunk_list.append(chunk_obj)
 
         if resume:
-            # Try to determine last chunk that was run
-            last_part = 0
-            for chunk in chunk_list:
+            # Determine which chunks need to be calibrated
+            for chunk in chunk_list[:]:
                 if os.path.exists('{0}/state/part{1}{2}.done'.format(chunk_obj.outdir,
                     chunk_obj.chunk, os.path.basename(chunk_obj.dataset))):
-                    last_part = chunk_obj.chunk + 1
-            chunk_list = chunk_list[last_part:]
+                    chunk_list.remove(chunk)
             if len(chunk_list) > 0:
-                log.info('Resuming time-correlated calibration from solution #{0}'.format(last_part))
+                log.info('Resuming time-correlated calibration for {0}...'.format(msname))
             else:
-                log.info('Peeling complete. Nothing to resume.')
+                log.info('Peeling complete for {0}. Nothing to resume.'.format(msname))
                 return
 
         # Run chunks in parallel
