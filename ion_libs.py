@@ -447,39 +447,59 @@ def peel_band(band):
         # {'ionfactor': [0.5, 0.3, 0.2], 'start_sol_num': [0, 24, 256]}?
 #        band.ionfactor = get_ionfactor(msname, instrument='instrument')
 
-        # Subtract the field
-        subparset = '{0}/parsets/{1}.subtract_field.parset'.format(
-            band.outdir, msname)
-        make_subtract_parset(subparset, source_list=None, beam_mode=band.beam_mode,
-            output_column='SUBTRACTED_DATA')
-        subprocess.call("calibrate-stand-alone -f {0} {1} {2} > {3}/logs/"
-            "{4}_subtract_field.log 2>&1".format(newmsname, subparset,
-            skymodel, band.outdir, msname), shell=True)
+        if band.subfield_first:
+            # Subtract the field before peeling
+            if not band.resume or (band.resume and
+                not os.path.exists('{0}/state/{1}_subtract.done'.format(band.outdir,
+                band.msname))):
+                subparset = '{0}/parsets/{1}.subtract_field.parset'.format(
+                    band.outdir, msname)
+                make_subtract_parset(subparset, source_list=None, beam_mode=band.beam_mode,
+                    output_column='SUBTRACTED_DATA')
+                subprocess.call("calibrate-stand-alone -f {0} {1} {2} > {3}/logs/"
+                    "{4}_subtract_field.log 2>&1".format(newmsname, subparset,
+                    skymodel, band.outdir, msname), shell=True)
+                # Save state
+                cmd = 'touch {0}/state/{1}_subtract.done'.format(band.outdir,
+                    band.msname)
+                subprocess.Popen(cmd, shell=True)
 
-        # Make a new sky model with only the calibrators
-        cal_skymodel = skymodel + '.cals_only'
-        cal_list = []
-        for peel_bin in band.peel_bins:
-            cal_list += peel_bin['names']
-        s = lsmtool.load(skymodel)
-        if s.hasPatches:
-            s.select('Patch == [{0}]'.format(','.join(cal_list)))
-        else:
-            s.select('Name == [{0}]'.format(','.join(cal_list)))
-        s.write(cal_skymodel)
+            # Make a new sky model with only the calibrators
+            cal_skymodel = skymodel + '.cals_only'
+            cal_list = []
+            for peel_bin in band.peel_bins:
+                cal_list += peel_bin['names']
+            s = lsmtool.load(skymodel)
+            if s.hasPatches:
+                s.select('Patch == [{0}]'.format(','.join(cal_list)))
+            else:
+                s.select('Name == [{0}]'.format(','.join(cal_list)))
+            s.write(cal_skymodel)
 
         # Do the peeling
         peelparset_timecorr = '{0}/parsets/{1}.timecorr_peeling.parset'.format(
             band.outdir, msname)
-        make_peeling_parset(peelparset_timecorr, band.peel_bins,
-            scalar_phase=band.use_scalar_phase, phase_only=True,
-            time_block=band.time_block, beam_mode=band.beam_mode,
-            uvmin=band.uvmin, skip_field=True, input_column='SUBTRACTED_DATA')
-        calibrate(newmsname, peelparset_timecorr, cal_skymodel, msname,
-            use_timecorr=True, outdir=band.outdir, instrument='instrument',
-            time_block=band.time_block, ionfactor=band.ionfactor,
-            solint=band.solint_min, flag_filler=band.flag_filler,
-            ncores=band.ncores_per_cal, resume=band.resume)
+        if band.subfield_first:
+            make_peeling_parset(peelparset_timecorr, band.peel_bins,
+                scalar_phase=band.use_scalar_phase, phase_only=True,
+                time_block=band.time_block, beam_mode=band.beam_mode,
+                uvmin=band.uvmin, skip_field=True, input_column='SUBTRACTED_DATA')
+            calibrate(newmsname, peelparset_timecorr, cal_skymodel, msname,
+                use_timecorr=True, outdir=band.outdir, instrument='instrument',
+                time_block=band.time_block, ionfactor=band.ionfactor,
+                solint=band.solint_min, flag_filler=band.flag_filler,
+                ncores=band.ncores_per_cal, resume=band.resume)
+        else:
+            make_peeling_parset(peelparset_timecorr, band.peel_bins,
+                scalar_phase=band.use_scalar_phase, phase_only=True,
+                time_block=band.time_block, beam_mode=band.beam_mode,
+                uvmin=band.uvmin)
+            calibrate(newmsname, peelparset_timecorr, skymodel, msname,
+                use_timecorr=True, outdir=band.outdir, instrument='instrument',
+                time_block=band.time_block, ionfactor=band.ionfactor,
+                solint=band.solint_min, flag_filler=band.flag_filler,
+                ncores=band.ncores_per_cal, resume=band.resume)
+
     return {'host':socket.gethostname(), 'name':band.msname}
 
 

@@ -384,6 +384,7 @@ if __name__=='__main__':
                 band.peel_start_delay = 0.0
                 band.resume = options.resume
                 band.init_logger = False
+                band.subfield_first = False
                 if band.use_timecorr and (np.remainder(band.time_block, 2) or
                     np.remainder(band.time_block, band.solint_min)):
                     log.warning('For best results, the number of time samples in a '
