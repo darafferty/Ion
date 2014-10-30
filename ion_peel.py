@@ -202,7 +202,8 @@ if __name__=='__main__':
 
         # Make a master sky model from which calibrators will be chosen. The flux
         # cut is set to 10% of the input flux cutoff.
-        if options.resume:
+        save_file = outdir + '/state/' + outfile + '.sav'
+        if not options.resume or (options.resume and not os.path.exists(save_file)):
             log.info('Searching sky model for suitable calibrators...')
             if options.gsm is not None:
                 master_skymodel = os.path.abspath(options.gsm)
@@ -371,7 +372,6 @@ if __name__=='__main__':
                     band.navg = options.navg
                     band.solint_amp = 330
                     band.time_block = 60 # number of time samples in a block
-                    band.flag_filler = False # flag filler solutions
                     band.ionfactor = options.ionfactor
                     band.ncores_per_cal = 3
                     band.do_each_cal_sep = False
@@ -400,6 +400,8 @@ if __name__=='__main__':
             for band in band_list[:]:
                 if not band.do_peeling:
                     band_list.remove(band)
+            for band in band_list:
+                band.subfield_first = True
 
             # Save bands to file for later resume
             save_file = outdir + '/state/' + outfile + '.sav'
@@ -409,44 +411,49 @@ if __name__=='__main__':
             try:
                 save_file = outdir + '/state/' + outfile + '.sav'
                 field_list, band_list = pickle.load( open( save_file, "rb" ) )
+
+                # Temp for testing:
+                for band in band_list[:]:
+                    if not os.path.exists(band.peeled_file):
+                        band_list.remove(band)
             except:
                 log.error('Could not load saved results. Resume not possible.')
                 sys.exit()
 
         if not options.dryrun:
-#             if has_ipy_parallel and options.torque:
-#                 log.info('Distributing peeling over nodes...')
-#                 # Start up parallel engines
-#                 if options.verbose:
-#                     loglevel = logging.DEBUG
-#                 else:
-#                     loglevel = logging.INFO
-#                 lb = loadbalance.LoadBalance(ppn=1, logfile=None,
-#                     loglevel=logging.DEBUG, file_to_source='/home/sttf201/init-lofar.sh')
-#                 lb.sync_import('from Ion.ion_libs import *')
-#
-#                 # With torque PBS, the number of bands to process in parallel is
-#                 # set by the PBS script, so the ncores option is used instead to
-#                 # set the number of processes per band (for time-correlated solve).
-#                 # Also set up delay and logging.
-#                 for i, band in enumerate(band_list):
-#                     band.ncores_per_cal = options.ncores
-#                     band.peel_start_delay = i * 60.0 # start delay in seconds to avoid too much disk IO
-#                     band.init_logger = True # So that a new logger is started on each engine
-#
-#                 # Map list of bands to the engines
-#                 ar = lb.map(peel_band, band_list)
-#                 for r in ar:
-#                     log.info("Peeling of %s finished on %s"%(r['name'], r['host']))
-#
-#             else:
-#                 pool = MyPool(options.ncores)
-#                 pool.map(peel_band, band_list)
-#                 pool.close()
-#                 pool.join()
-#
-#             # Clean up
-#             subprocess.Popen('rm -rf calibrate-stand-alone*.log', shell=True)
+            if has_ipy_parallel and options.torque:
+                log.info('Distributing peeling over nodes...')
+                # Start up parallel engines
+                if options.verbose:
+                    loglevel = logging.DEBUG
+                else:
+                    loglevel = logging.INFO
+                lb = loadbalance.LoadBalance(ppn=1, logfile=None,
+                    loglevel=logging.DEBUG, file_to_source='/home/sttf201/init-lofar.sh')
+                lb.sync_import('from Ion.ion_libs import *')
+
+                # With torque PBS, the number of bands to process in parallel is
+                # set by the PBS script, so the ncores option is used instead to
+                # set the number of processes per band (for time-correlated solve).
+                # Also set up delay and logging.
+                for i, band in enumerate(band_list):
+                    band.ncores_per_cal = options.ncores
+                    band.peel_start_delay = i * 60.0 # start delay in seconds to avoid too much disk IO
+                    band.init_logger = True # So that a new logger is started on each engine
+
+                # Map list of bands to the engines
+                ar = lb.map(peel_band, band_list)
+                for r in ar:
+                    log.info("Peeling of %s finished on %s"%(r['name'], r['host']))
+
+            else:
+                pool = MyPool(options.ncores)
+                pool.map(peel_band, band_list)
+                pool.close()
+                pool.join()
+
+            # Clean up
+            subprocess.Popen('rm -rf calibrate-stand-alone*.log', shell=True)
 
             # Write all the solutions to an H5parm file for later use in LoSoTo.
             write_sols(field_list, outdir+'/'+outfile, flag_outliers=options.flag)

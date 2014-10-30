@@ -487,7 +487,7 @@ def peel_band(band):
             calibrate(newmsname, peelparset_timecorr, cal_skymodel, msname,
                 use_timecorr=True, outdir=band.outdir, instrument='instrument',
                 time_block=band.time_block, ionfactor=band.ionfactor,
-                solint=band.solint_min, flag_filler=band.flag_filler,
+                solint=band.solint_min,
                 ncores=band.ncores_per_cal, resume=band.resume)
         else:
             make_peeling_parset(peelparset_timecorr, band.peel_bins,
@@ -497,7 +497,7 @@ def peel_band(band):
             calibrate(newmsname, peelparset_timecorr, skymodel, msname,
                 use_timecorr=True, outdir=band.outdir, instrument='instrument',
                 time_block=band.time_block, ionfactor=band.ionfactor,
-                solint=band.solint_min, flag_filler=band.flag_filler,
+                solint=band.solint_min,
                 ncores=band.ncores_per_cal, resume=band.resume)
 
     return {'host':socket.gethostname(), 'name':band.msname}
@@ -839,7 +839,7 @@ def makeFlagParset(h5file, solset):
 
 def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
     time_block=None, ionfactor=0.5, outdir='.', instrument='instrument',
-    solint=None, flag_filler=False, ncores=1, resume=False):
+    solint=None, ncores=1, resume=False):
     """Calls BBS to calibrate with optional time-correlated fitting"""
     log = logging.getLogger("Calib")
 
@@ -882,10 +882,11 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
             '      Samples in total: {2}\n'
             '      Block size: {3} (samples)\n'
             '                  {4} (s)\n'
-            '      Number of solutions: {5}\n'
-            '      Ionfactor: {6}\n'
-            '      FWHM range: {7} - {8} (s)'.format(msname, timepersample,
-            trows, blockl, tlen*3600.0, nsols, ionfactor, fwhm_min, fwhm_max))
+            '      Solution interval: {5} (samples)\n'
+            '      Number of solutions: {6}\n'
+            '      Ionfactor: {7}\n'
+            '      FWHM range: {8} - {9} (s)'.format(msname, timepersample,
+            trows, blockl, tlen*3600.0, solint, nsols, ionfactor, fwhm_min, fwhm_max))
 
         # Update cellsize and chunk size of parset
         update_parset(parset)
@@ -895,9 +896,9 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
         if not resume or (resume and not os.path.exists(instrument_out)):
             os.system('rm -rf ' +instrument_out)
             clean_and_copy_parmdb(instrument_orig, instrument_out, blockl,
-                flag_filler=flag_filler, msname=msname, timepersample=timepersample)
+                msname=msname, timepersample=timepersample)
 
-        # Calibrate the chunks
+        # Set up the chunks
         chunk_list = []
         tlen_mod = tlen / 2.0 # hours
         chunk_mid_start = blockl / 2 / solint
@@ -926,7 +927,7 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
             chunk_obj.logname_root = logname_root + '_part' + str(c)
             chunk_obj.solnum = chunk_obj.chunk
             chunk_obj.output = chunk_obj.outdir + '/part' + str(chunk_obj.chunk) + os.path.basename(chunk_obj.dataset)
-            chunk_obj.ntot = nsols
+            chunk_obj.ntot = blockl
             chunk_list.append(chunk_obj)
 
         if resume:
@@ -1021,13 +1022,12 @@ def calibrate_chunk(chunk_obj):
 
 
 def clean_and_copy_parmdb(instrument_name, instrument_out, blockl,
-    flag_filler=False, msname=None, timepersample=10.0):
+    msname=None, timepersample=10.0):
     """Resets and copies a parmdb
 
     instrument_name - parmdb to copy
     instrument_out - output parmdb
     blockl - block length in time slots
-    flag_filler = flag parts that won't be filled with time-correlated solutions
     """
     pdb = lofar.parmdb.parmdb(instrument_name)
     parms = pdb.getValuesGrid("*")
@@ -1042,29 +1042,6 @@ def clean_and_copy_parmdb(instrument_name, instrument_out, blockl,
             parms[key]['values'][filler-1:-filler-2,0] = tmp1
     pdb_out = lofar.parmdb.parmdb(instrument_out, create=True)
     pdb_out.addValues(parms)
-
-    if flag_filler:
-        # Flag data for times that won't be filled with time-correlated solutions
-        ms = pt.table(msname, readonly=False)
-        starttime = ms[0]['TIME']
-        endtime   = ms[ms.nrows()-1]['TIME']
-
-        end_block = blockl / 2.0 * timepersample
-        tabStationSelection = ms.query('TIME > ' + str(starttime)
-            + ' && TIME < ' + str(starttime+end_block),
-            sortlist='TIME,ANTENNA1,ANTENNA2')
-        tabStationSelection.putcol("FLAG_ROW", np.ones(filler, dtype=bool))
-        tabStationSelection.putcol("FLAG", np.ones((filler, 4), dtype=bool))
-        tabStationSelection.close()
-
-        start_block = endtime - (blockl / 2.0 * timepersample)
-        tabStationSelection = ms.query('TIME > ' + str(starttime+start_block)
-            + ' && TIME < ' + str(endtime),
-            sortlist='TIME,ANTENNA1,ANTENNA2')
-        tabStationSelection.putcol("FLAG_ROW", np.ones(filler, dtype=bool))
-        tabStationSelection.putcol("FLAG", np.ones((filler, 4), dtype=bool))
-        tabStationSelection.close()
-        ms.close()
 
 
 def update_parset(parset):
