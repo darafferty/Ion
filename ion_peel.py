@@ -400,8 +400,6 @@ if __name__=='__main__':
             for band in band_list[:]:
                 if not band.do_peeling:
                     band_list.remove(band)
-            for band in band_list:
-                band.subfield_first = True
 
             # Save bands to file for later resume
             save_file = outdir + '/state/' + outfile + '.sav'
@@ -416,6 +414,9 @@ if __name__=='__main__':
                 for band in band_list[:]:
                     if not os.path.exists(band.peeled_file):
                         band_list.remove(band)
+                for band in band_list:
+                    band.subfield_first = True
+                    band.ionfactor = options.ionfactor
             except:
                 log.error('Could not load saved results. Resume not possible.')
                 sys.exit()
