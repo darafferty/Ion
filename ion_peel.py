@@ -417,6 +417,11 @@ if __name__=='__main__':
                 for band in band_list:
                     band.subfield_first = True
                     band.ionfactor = options.ionfactor
+                # Set up peeling. Since the band objects are altered, this is a bit
+                # tricky to parallelize, so just do it serially.
+                for band in band_list:
+                    setup_peeling(band)
+
             except:
                 log.error('Could not load saved results. Resume not possible.')
                 sys.exit()
