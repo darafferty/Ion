@@ -202,7 +202,7 @@ if __name__=='__main__':
 
         # Make a master sky model from which calibrators will be chosen. The flux
         # cut is set to 10% of the input flux cutoff.
-        if not options.resume:
+        if options.resume:
             log.info('Searching sky model for suitable calibrators...')
             if options.gsm is not None:
                 master_skymodel = os.path.abspath(options.gsm)
