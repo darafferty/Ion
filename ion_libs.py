@@ -933,8 +933,8 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
         if resume:
             # Determine which chunks need to be calibrated
             for chunk in chunk_list[:]:
-                if not os.path.exists('{0}/state/part{1}{2}.done'.format(chunk_obj.outdir,
-                    chunk_obj.chunk, os.path.basename(chunk_obj.dataset))):
+                if not os.path.exists('{0}/state/part{1}{2}.done'.format(chunk.outdir,
+                    chunk.chunk, os.path.basename(chunk.dataset))):
                     chunk_list.remove(chunk)
             if len(chunk_list) > 0:
                 log.info('Resuming time-correlated calibration for {0}...'.format(msname))
