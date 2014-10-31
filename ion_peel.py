@@ -409,6 +409,9 @@ if __name__=='__main__':
             try:
                 save_file = outdir + '/state/' + outfile + '.sav'
                 field_list, band_list = pickle.load( open( save_file, "rb" ) )
+                for field in field_list:
+                    for band in field.bands:
+                        band.resume = options.resume
             except:
                 log.error('Could not load saved results. Resume not possible.')
                 sys.exit()
