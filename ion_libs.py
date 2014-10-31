@@ -955,7 +955,10 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
             parms_old = pdb.getValuesGrid("*")
             for chunk_obj in chunk_list:
                 instrument_input = chunk_obj.output + '/instrument'
-                pdb_part = lofar.parmdb.parmdb(instrument_input)
+                try:
+                    pdb_part = lofar.parmdb.parmdb(instrument_input)
+                except:
+                    continue
                 parms_part = pdb_part.getValuesGrid("*")
                 keynames = parms_part.keys()
 
