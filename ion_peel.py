@@ -412,6 +412,8 @@ if __name__=='__main__':
                 for field in field_list:
                     for band in field.bands:
                         band.resume = options.resume
+                for band in band_list:
+                    band.resume = options.resume
             except:
                 log.error('Could not load saved results. Resume not possible.')
                 sys.exit()
