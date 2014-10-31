@@ -422,7 +422,7 @@ def peel_band(band):
         # Save state
         cmd = 'touch {0}/state/{1}_dirindep.done'.format(band.outdir,
             band.msname)
-        subprocess.Popen(cmd, shell=True)
+        subprocess.call(cmd, shell=True)
 
     # Perform the peeling. Do this step even if time-correlated solutions
     # are desired so that the proper parmdb is made and so that the correlation
@@ -437,7 +437,7 @@ def peel_band(band):
         # Save state
         cmd = 'touch {0}/state/{1}_initialpeel.done'.format(band.outdir,
             band.msname)
-        subprocess.Popen(cmd, shell=True)
+        subprocess.call(cmd, shell=True)
 
     if band.use_timecorr:
         # Do time-correlated peeling.
@@ -462,7 +462,7 @@ def peel_band(band):
                 # Save state
                 cmd = 'touch {0}/state/{1}_subtract.done'.format(band.outdir,
                     band.msname)
-                subprocess.Popen(cmd, shell=True)
+                subprocess.call(cmd, shell=True)
 
             # Make a new sky model with only the calibrators
             cal_skymodel = skymodel + '.cals_only'
@@ -933,7 +933,7 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
         if resume:
             # Determine which chunks need to be calibrated
             for chunk in chunk_list[:]:
-                if os.path.exists('{0}/state/part{1}{2}.done'.format(chunk_obj.outdir,
+                if not os.path.exists('{0}/state/part{1}{2}.done'.format(chunk_obj.outdir,
                     chunk_obj.chunk, os.path.basename(chunk_obj.dataset))):
                     chunk_list.remove(chunk)
             if len(chunk_list) > 0:
@@ -943,11 +943,10 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
                 return
 
         # Run chunks in parallel
-        manager = multiprocessing.Manager()
-        pool = multiprocessing.Pool(ncores)
-        pool.map(run_chunk, chunk_list)
-        pool.close()
-        pool.join()
+#         pool = multiprocessing.Pool(ncores)
+#         pool.map(run_chunk, chunk_list)
+#         pool.close()
+#         pool.join()
 
         # Copy over the solutions to the final parmdb
         pdb = lofar.parmdb.parmdb(instrument_out)
@@ -978,7 +977,7 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
         del pdb
 
         # Clean up
-        subprocess.Popen('rm -rf {0}/part*{1}*'.format(chunk_list[0].outdir,
+        subprocess.call('rm -rf {0}/part*{1}*'.format(chunk_list[0].outdir,
             os.path.basename(chunk_list[0].dataset)), shell=True)
 
 
@@ -1000,13 +999,13 @@ def run_chunk(chunk_obj):
 
     # Clean up, leaving instrument parmdb for later collection
     cmd = """find {0}/* | grep -v "instrument" | xargs rm -rf """.format(chunk_obj.output)
-    subprocess.Popen(cmd, shell=True)
+    subprocess.call(cmd, shell=True)
 
     # Record successful completion
     success_file = '{0}/state/part{1}{2}.done'.format(chunk_obj.outdir,
                     chunk_obj.chunk, os.path.basename(chunk_obj.dataset))
     cmd = 'touch {0}'.format(success_file)
-    subprocess.Popen(cmd, shell=True)
+    subprocess.call(cmd, shell=True)
 
 
 def calibrate_chunk(chunk_obj):

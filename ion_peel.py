@@ -381,7 +381,7 @@ if __name__=='__main__':
                     band.peel_start_delay = 0.0
                     band.resume = options.resume
                     band.init_logger = False
-                    band.subfield_first = False
+                    band.subfield_first = True
                     if band.use_timecorr and (np.remainder(band.time_block, 2) or
                         np.remainder(band.time_block, band.solint_min)):
                         log.warning('For best results, the number of time samples in a '
@@ -409,19 +409,6 @@ if __name__=='__main__':
             try:
                 save_file = outdir + '/state/' + outfile + '.sav'
                 field_list, band_list = pickle.load( open( save_file, "rb" ) )
-
-                # Temp for testing:
-                for band in band_list[:]:
-                    if not os.path.exists(band.peeled_file):
-                        band_list.remove(band)
-                for band in band_list:
-                    band.subfield_first = True
-                    band.ionfactor = options.ionfactor
-                # Set up peeling. Since the band objects are altered, this is a bit
-                # tricky to parallelize, so just do it serially.
-                for band in band_list:
-                    setup_peeling(band)
-
             except:
                 log.error('Could not load saved results. Resume not possible.')
                 sys.exit()
