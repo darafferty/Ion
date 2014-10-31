@@ -451,7 +451,7 @@ if __name__=='__main__':
                 pool.join()
 
             # Clean up
-            subprocess.Popen('rm -rf calibrate-stand-alone*.log', shell=True)
+            subprocess.call('rm -rf calibrate-stand-alone*.log', shell=True)
 
             # Write all the solutions to an H5parm file for later use in LoSoTo.
             write_sols(field_list, outdir+'/'+outfile, flag_outliers=options.flag)

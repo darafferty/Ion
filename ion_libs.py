@@ -933,7 +933,7 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
         if resume:
             # Determine which chunks need to be calibrated
             for chunk in chunk_list[:]:
-                if not os.path.exists('{0}/state/part{1}{2}.done'.format(chunk.outdir,
+                if os.path.exists('{0}/state/part{1}{2}.done'.format(chunk.outdir,
                     chunk.chunk, os.path.basename(chunk.dataset))):
                     chunk_list.remove(chunk)
             if len(chunk_list) > 0:
@@ -943,10 +943,10 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
                 return
 
         # Run chunks in parallel
-#         pool = multiprocessing.Pool(ncores)
-#         pool.map(run_chunk, chunk_list)
-#         pool.close()
-#         pool.join()
+        pool = multiprocessing.Pool(ncores)
+        pool.map(run_chunk, chunk_list)
+        pool.close()
+        pool.join()
 
         # Copy over the solutions to the final parmdb
         try:
@@ -983,8 +983,8 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
             log.error(str(e))
 
         # Clean up
-#         subprocess.call('rm -rf {0}/part*{1}*'.format(chunk_list[0].outdir,
-#             os.path.basename(chunk_list[0].dataset)), shell=True)
+        subprocess.call('rm -rf {0}/part*{1}*'.format(chunk_list[0].outdir,
+            os.path.basename(chunk_list[0].dataset)), shell=True)
 
 
 def run_chunk(chunk_obj):
