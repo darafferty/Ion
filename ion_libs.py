@@ -949,32 +949,35 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
 #         pool.join()
 
         # Copy over the solutions to the final parmdb
-        pdb = lofar.parmdb.parmdb(instrument_out)
-        parms = pdb.getValuesGrid("*")
-        parms_old = pdb.getValuesGrid("*")
-        for chunk_obj in chunk_list:
-            instrument_input = chunk_obj.output + '/instrument'
-            pdb_part = lofar.parmdb.parmdb(instrument_input)
-            parms_part = pdb_part.getValuesGrid("*")
-            keynames = parms_part.keys()
+        try:
+            pdb = lofar.parmdb.parmdb(instrument_out)
+            parms = pdb.getValuesGrid("*")
+            parms_old = pdb.getValuesGrid("*")
+            for chunk_obj in chunk_list:
+                instrument_input = chunk_obj.output + '/instrument'
+                pdb_part = lofar.parmdb.parmdb(instrument_input)
+                parms_part = pdb_part.getValuesGrid("*")
+                keynames = parms_part.keys()
 
-            # Replace old value with new
-            for key in keynames:
-            # Hard-coded to look for Phase and/or TEC parms
-            # Presumably OK to use other parms with additional 'or' statments
-                if 'Phase' in key or 'TEC' in key:
-                    tmp1 = np.copy(parms[key]['values'][:,0])
-                    tmp1[chunk_obj.solnum] = np.copy(parms_part[key]['values'][0,0])
-                    parms[key]['values'][:,0] = tmp1
-            del pdb_part
+                # Replace old value with new
+                for key in keynames:
+                # Hard-coded to look for Phase and/or TEC parms
+                # Presumably OK to use other parms with additional 'or' statments
+                    if 'Phase' in key or 'TEC' in key:
+                        tmp1 = np.copy(parms[key]['values'][:,0])
+                        tmp1[chunk_obj.solnum] = np.copy(parms_part[key]['values'][0,0])
+                        parms[key]['values'][:,0] = tmp1
+                del pdb_part
 
-        # Remove previous parmdb values
-        for line in parms_old:
-            pdb.deleteValues(line)
+            # Remove previous parmdb values
+            for line in parms_old:
+                pdb.deleteValues(line)
 
-        # Add new values
-        pdb.addValues(parms)
-        del pdb
+            # Add new values
+            pdb.addValues(parms)
+            del pdb
+        except Exception as e:
+            log.error(str(e))
 
         # Clean up
         subprocess.call('rm -rf {0}/part*{1}*'.format(chunk_list[0].outdir,
