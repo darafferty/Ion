@@ -575,7 +575,6 @@ def make_subtract_parset(parset, source_list=None, beam_mode='DEFAULT',
         source_list = ''
 
     # Set overall strategy
-    nbins = len(peel_bins)
     newlines = ['Strategy.InputColumn = DATA\n',
         'Strategy.ChunkSize = {0}\n'.format(int(max(sol_int_list))),
         'Strategy.Baselines = [CR]S*&\n',

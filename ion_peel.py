@@ -31,10 +31,6 @@ run_peel.pbs:
     #PBS -N peeling_10SB
     #PBS -l walltime=100:00:00
     #PBS -l nodes=10:ppn=6 --> 10 nodes (one per band), 6 processors per node (i.e., the whole node)
-    #PBS -j oe
-    #PBS -o output-$PBS_JOBNAME-$PBS_JOBID
-    #PBS -m bea
-    #PBS -M drafferty@hs.uni-hamburg.de
 
     cd $PBS_O_WORKDIR
     source /home/sttf201/init-lofar.sh
