@@ -160,6 +160,12 @@ if __name__=='__main__':
             init_logger(logfilename, debug=options.verbose)
             log = logging.getLogger("Main")
         elif options.clobber:
+            prompt = "Output directory exists. Press enter to clobber or 'q' to quit : "
+            answ = raw_input(prompt)
+            while answ != '':
+                if answ == 'q':
+                    sys.exit()
+                answ = raw_input(prompt)
             subprocess.call("rm -rf {0}".format(outdir), shell=True)
             if not os.path.isdir(outdir):
                 os.mkdir(outdir)
@@ -246,7 +252,7 @@ if __name__=='__main__':
                         band.file, options.fluxcut, majcut_arcsec, plot=options.verbose,
                         applyBeam=applyBeam, band_skymodel=band.skymodel)
                     if options.verbose:
-                        prompt = "Press enter to continue or 'q' to quit... : "
+                        prompt = "Press enter to continue or 'q' to quit : "
                         answ = raw_input(prompt)
                         while answ != '':
                             if answ == 'q':
