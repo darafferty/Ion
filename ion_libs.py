@@ -576,7 +576,7 @@ def make_subtract_parset(parset, source_list=None, beam_mode='DEFAULT',
 
     # Set overall strategy
     newlines = ['Strategy.InputColumn = DATA\n',
-        'Strategy.ChunkSize = {0}\n'.format(int(max(sol_int_list))),
+        'Strategy.ChunkSize = 250\n',
         'Strategy.Baselines = [CR]S*&\n',
         'Strategy.UseSolver = F\n']
     strategy_str = 'Strategy.Steps = [subtract]\n'
