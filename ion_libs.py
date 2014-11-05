@@ -371,139 +371,141 @@ def peel_band(band):
         init_logger(logfilename)
     log = logging.getLogger("Peeler")
 
-    # Check if peeling is required
-    if not band.do_peeling:
-        return
+    # Wrap everything in a try-except block to be sure any exception is caught
+    try:
+        # Check if peeling is required
+        if not band.do_peeling:
+            return
 
-    time.sleep(band.peel_start_delay)
+        time.sleep(band.peel_start_delay)
 
-    # Define file names
-    msname = band.msname
-    skymodel =  "{0}/skymodels/{1}.peeling.skymodel".format(band.outdir, msname)
-    p_shiftname = "{0}/parsets/peeling_shift_{1}.parset".format(band.outdir,
-        msname)
-    peelparset = "{0}/parsets/{1}.peeling.parset".format(band.outdir,
-        msname)
+        # Define file names
+        msname = band.msname
+        skymodel =  "{0}/skymodels/{1}.peeling.skymodel".format(band.outdir, msname)
+        p_shiftname = "{0}/parsets/peeling_shift_{1}.parset".format(band.outdir,
+            msname)
+        peelparset = "{0}/parsets/{1}.peeling.parset".format(band.outdir,
+            msname)
 
-    # Make a copy of the MS for peeling and average if desired
-    newmsname = "{0}/{1}.peeled".format(band.outdir, msname)
-    log.info('Performing averaging and peeling for {0}...\n'
-        '      Phase-only calibration: {4}\n'
-        '      See the following logs for details:\n'
-        '      - {3}/logs/ndppp_avg_{1}.log\n'
-        '      - {3}/logs/{2}_peeling_calibrate.log'.format(band.file, msname,
-        msname, band.outdir, band.phase_only))
-    if not band.resume or (band.resume and not os.path.exists(newmsname)):
-        f = open(p_shiftname, 'w')
-        f.write("msin={0}\n"
-            "msin.datacolumn=CORRECTED_DATA\n"
-            "msout={1}\n"
-            "msin.startchan = 0\n"
-            "msin.nchan = 0\n"
-            "steps = [avg]\n"
-            "avg.type = average\n"
-            "avg.freqstep = {2}".format(band.file, newmsname, band.navg))
-        f.close()
-        subprocess.call("NDPPP {0} > {1}/logs/ndppp_avg_{2}.log 2>&1".format(p_shiftname,
-            band.outdir, msname), shell=True)
+        # Make a copy of the MS for peeling and average if desired
+        newmsname = "{0}/{1}.peeled".format(band.outdir, msname)
+        log.info('Performing averaging and peeling for {0}...\n'
+            '      Phase-only calibration: {4}\n'
+            '      See the following logs for details:\n'
+            '      - {3}/logs/ndppp_avg_{1}.log\n'
+            '      - {3}/logs/{2}_peeling_calibrate.log'.format(band.file, msname,
+            msname, band.outdir, band.phase_only))
+        if not band.resume or (band.resume and not os.path.exists(newmsname)):
+            f = open(p_shiftname, 'w')
+            f.write("msin={0}\n"
+                "msin.datacolumn=CORRECTED_DATA\n"
+                "msout={1}\n"
+                "msin.startchan = 0\n"
+                "msin.nchan = 0\n"
+                "steps = [avg]\n"
+                "avg.type = average\n"
+                "avg.freqstep = {2}".format(band.file, newmsname, band.navg))
+            f.close()
+            subprocess.call("NDPPP {0} > {1}/logs/ndppp_avg_{2}.log 2>&1".format(p_shiftname,
+                band.outdir, msname), shell=True)
 
-    # Perform dir-independent calibration if desired
-    if band.do_dirindep and not band.resume or (band.do_dirindep and band.resume
-        and not os.path.exists('{0}/state/{1}_dirindep.done'.format(band.outdir,
-        band.msname))):
-        dirindep_parset = '{0}/parsets/{1}.dirindep.parset'.format(
-            band.outdir, msname)
-        make_dirindep_parset(dirindep_parset, scalar_phase=band.use_scalar_phase,
-            sol_int=band.solint_min, beam_mode=band.beam_mode, uvmin=band.uvmin)
-        subprocess.call("calibrate-stand-alone -f {0} {1} {2} > {3}/logs/"
-            "{4}_dirindep_calibrate.log 2>&1".format(newmsname, dirindep_parset,
-            skymodel, band.outdir, msname), shell=True)
+        # Perform dir-independent calibration if desired
+        if band.do_dirindep and not band.resume or (band.do_dirindep and band.resume
+            and not os.path.exists('{0}/state/{1}_dirindep.done'.format(band.outdir,
+            band.msname))):
+            dirindep_parset = '{0}/parsets/{1}.dirindep.parset'.format(
+                band.outdir, msname)
+            make_dirindep_parset(dirindep_parset, scalar_phase=band.use_scalar_phase,
+                sol_int=band.solint_min, beam_mode=band.beam_mode, uvmin=band.uvmin)
+            subprocess.call("calibrate-stand-alone -f {0} {1} {2} > {3}/logs/"
+                "{4}_dirindep_calibrate.log 2>&1".format(newmsname, dirindep_parset,
+                skymodel, band.outdir, msname), shell=True)
 
-        # Save state
-        cmd = 'touch {0}/state/{1}_dirindep.done'.format(band.outdir,
-            band.msname)
-        subprocess.call(cmd, shell=True)
+            # Save state
+            cmd = 'touch {0}/state/{1}_dirindep.done'.format(band.outdir,
+                band.msname)
+            subprocess.call(cmd, shell=True)
 
-    # Perform the peeling. Do this step even if time-correlated solutions
-    # are desired so that the proper parmdb is made and so that the correlation
-    # time can be estimated
-    if not band.resume or (band.resume and
-        not os.path.exists('{0}/state/{1}_initialpeel.done'.format(band.outdir,
-        band.msname))):
-        subprocess.call("calibrate-stand-alone -f {0} {1} {2} > {3}/logs/"
-            "{4}_peeling_calibrate.log 2>&1".format(newmsname, peelparset,
-            skymodel, band.outdir, msname), shell=True)
+        # Perform the peeling. Do this step even if time-correlated solutions
+        # are desired so that the proper parmdb is made and so that the correlation
+        # time can be estimated
+        if not band.resume or (band.resume and
+            not os.path.exists('{0}/state/{1}_initialpeel.done'.format(band.outdir,
+            band.msname))):
+            subprocess.call("calibrate-stand-alone -f {0} {1} {2} > {3}/logs/"
+                "{4}_peeling_calibrate.log 2>&1".format(newmsname, peelparset,
+                skymodel, band.outdir, msname), shell=True)
 
-        # Save state
-        cmd = 'touch {0}/state/{1}_initialpeel.done'.format(band.outdir,
-            band.msname)
-        subprocess.call(cmd, shell=True)
+            # Save state
+            cmd = 'touch {0}/state/{1}_initialpeel.done'.format(band.outdir,
+                band.msname)
+            subprocess.call(cmd, shell=True)
 
-    if band.use_timecorr:
-        # Do time-correlated peeling.
+        if band.use_timecorr:
+            # Do time-correlated peeling.
 
-        # Estimate ionfactor from the non-time-correlated peeling solutions
-        # TODO: allow ionfactor to vary with time -- maybe a dictionary of
-        # {'ionfactor': [0.5, 0.3, 0.2], 'start_sol_num': [0, 24, 256]}?
-#        band.ionfactor = get_ionfactor(msname, instrument='instrument')
+            # Estimate ionfactor from the non-time-correlated peeling solutions
+            # TODO: allow ionfactor to vary with time -- maybe a dictionary of
+            # {'ionfactor': [0.5, 0.3, 0.2], 'start_sol_num': [0, 24, 256]}?
+    #        band.ionfactor = get_ionfactor(msname, instrument='instrument')
 
-        if band.subfield_first:
-            # Subtract the field before peeling
-            if not band.resume or (band.resume and
-                not os.path.exists('{0}/state/{1}_subtract.done'.format(band.outdir,
-                band.msname))):
-                subparset = '{0}/parsets/{1}.subtract_field.parset'.format(
-                    band.outdir, msname)
-                make_subtract_parset(subparset, source_list=None, beam_mode=band.beam_mode,
-                    output_column='SUBTRACTED_DATA')
-                subprocess.call("calibrate-stand-alone -f {0} {1} {2} > {3}/logs/"
-                    "{4}_subtract_field.log 2>&1".format(newmsname, subparset,
-                    skymodel, band.outdir, msname), shell=True)
-                # Save state
-                cmd = 'touch {0}/state/{1}_subtract.done'.format(band.outdir,
-                    band.msname)
-                subprocess.call(cmd, shell=True)
+            if band.subfield_first:
+                # Subtract the field before peeling
+                if not band.resume or (band.resume and
+                    not os.path.exists('{0}/state/{1}_subtract.done'.format(band.outdir,
+                    band.msname))):
+                    subparset = '{0}/parsets/{1}.subtract_field.parset'.format(
+                        band.outdir, msname)
+                    make_subtract_parset(subparset, source_list=None, beam_mode=band.beam_mode,
+                        output_column='SUBTRACTED_DATA')
+                    subprocess.call("calibrate-stand-alone -f {0} {1} {2} > {3}/logs/"
+                        "{4}_subtract_field.log 2>&1".format(newmsname, subparset,
+                        skymodel, band.outdir, msname), shell=True)
 
-            # Make a new sky model with only the calibrators
-            cal_skymodel = skymodel + '.cals_only'
-            cal_list = []
-            for peel_bin in band.peel_bins:
-                cal_list += peel_bin['names']
-            s = lsmtool.load(skymodel)
-            if s.hasPatches:
-                s.select('Patch == [{0}]'.format(','.join(cal_list)))
-            else:
-                s.select('Name == [{0}]'.format(','.join(cal_list)))
-            s.write(cal_skymodel)
+                    # Save state
+                    cmd = 'touch {0}/state/{1}_subtract.done'.format(band.outdir,
+                        band.msname)
+                    subprocess.call(cmd, shell=True)
 
-        # Do the peeling
-        peelparset_timecorr = '{0}/parsets/{1}.timecorr_peeling.parset'.format(
-            band.outdir, msname)
-        if band.subfield_first:
-            make_peeling_parset(peelparset_timecorr, band.peel_bins,
-                scalar_phase=band.use_scalar_phase, phase_only=True,
-                time_block=band.time_block, beam_mode=band.beam_mode,
-                uvmin=band.uvmin, skip_field=True, input_column='SUBTRACTED_DATA')
-            try:
+                # Make a new sky model with only the calibrators
+                cal_skymodel = skymodel + '.cals_only'
+                cal_list = []
+                for peel_bin in band.peel_bins:
+                    cal_list += peel_bin['names']
+                s = lsmtool.load(skymodel)
+                if s.hasPatches:
+                    s.select('Patch == [{0}]'.format(','.join(cal_list)))
+                else:
+                    s.select('Name == [{0}]'.format(','.join(cal_list)))
+                s.write(cal_skymodel, clobber=True)
+
+            # Do the peeling
+            peelparset_timecorr = '{0}/parsets/{1}.timecorr_peeling.parset'.format(
+                band.outdir, msname)
+            if band.subfield_first:
+                make_peeling_parset(peelparset_timecorr, band.peel_bins,
+                    scalar_phase=band.use_scalar_phase, phase_only=True,
+                    time_block=band.time_block, beam_mode=band.beam_mode,
+                    uvmin=band.uvmin, skip_field=True, input_column='SUBTRACTED_DATA')
                 calibrate(newmsname, peelparset_timecorr, cal_skymodel, msname,
                     use_timecorr=True, outdir=band.outdir, instrument='instrument',
                     time_block=band.time_block, ionfactor=band.ionfactor,
                     solint=band.solint_min,
                     ncores=band.ncores_per_cal, resume=band.resume)
-            except Exception as e:
-                log.error(str(e))
-        else:
-            make_peeling_parset(peelparset_timecorr, band.peel_bins,
-                scalar_phase=band.use_scalar_phase, phase_only=True,
-                time_block=band.time_block, beam_mode=band.beam_mode,
-                uvmin=band.uvmin)
-            calibrate(newmsname, peelparset_timecorr, skymodel, msname,
-                use_timecorr=True, outdir=band.outdir, instrument='instrument',
-                time_block=band.time_block, ionfactor=band.ionfactor,
-                solint=band.solint_min,
-                ncores=band.ncores_per_cal, resume=band.resume)
+            else:
+                make_peeling_parset(peelparset_timecorr, band.peel_bins,
+                    scalar_phase=band.use_scalar_phase, phase_only=True,
+                    time_block=band.time_block, beam_mode=band.beam_mode,
+                    uvmin=band.uvmin)
+                calibrate(newmsname, peelparset_timecorr, skymodel, msname,
+                    use_timecorr=True, outdir=band.outdir, instrument='instrument',
+                    time_block=band.time_block, ionfactor=band.ionfactor,
+                    solint=band.solint_min,
+                    ncores=band.ncores_per_cal, resume=band.resume)
 
-    return {'host':socket.gethostname(), 'name':band.msname}
+        return {'host':socket.gethostname(), 'name':band.msname}
+    except Exception as e:
+        log.error(str(e))
 
 
 def make_dirindep_parset(parset, scalar_phase=True, sol_int=1,
