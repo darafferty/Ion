@@ -940,6 +940,9 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
                     chunk_list.remove(chunk)
             if len(chunk_list) > 0:
                 log.info('Resuming time-correlated calibration for {0}...'.format(msname))
+                log.debug('Chunks remaining to calibrate:')
+                for chunk in chunk_list:
+                    log.debug('  Solution #{0}'.format(chunk.chunk))
             else:
                 log.info('Peeling complete for {0}. Nothing to resume.'.format(msname))
                 return
@@ -1092,6 +1095,8 @@ def split_ms(msin, msout, start_out, end_out):
 
 def modify_weights(msname, ionfactor, dryrun=False, ntot=None, trim_start=True):
     """Modifies the WEIGHTS column of the input MS"""
+    log = logging.getLogger("Modify_weights")
+
     t = pt.table(msname, readonly=False, ack=False)
     freqtab = pt.table(msname + '/SPECTRAL_WINDOW', ack=False)
     freq = freqtab.getcol('REF_FREQUENCY')
@@ -1110,8 +1115,13 @@ def modify_weights(msname, ionfactor, dryrun=False, ntot=None, trim_start=True):
             stddev = ionfactor * np.sqrt((25e3 / dist)) * (freq / 60e6) # in sec
             fwhm = 2.3548 * stddev
             fwhm_list.append(fwhm[0])
+            nslots = len(weightscol[:, 0, 0])
             if ntot is None:
-                ntot = len(weightscol[:, 0, 0])
+                ntot = nslots
+            elif ntot < nslots:
+                log.debug('Number of samples for Gaussian is {0}, but number '
+                    'in chunk is {1}. Setting number for Gaussian to {1}.'.format(ntot, nslots))
+                ntot = nslots
             gauss = scipy.signal.gaussian(ntot, stddev/timepersample)
 
             if not dryrun:
