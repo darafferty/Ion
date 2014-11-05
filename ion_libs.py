@@ -1003,8 +1003,12 @@ def run_chunk(chunk_obj):
     calibrate_chunk(chunk_obj)
 
     # Clean up, leaving instrument parmdb for later collection
-    cmd = """find {0}/* | grep -v "instrument" | xargs rm -rf """.format(chunk_obj.output)
-    subprocess.call(cmd, shell=True)
+    for g in glob.glob('{0}/*'.format(chunk_obj.output)):
+        if 'instrument' not in g:
+            if os.path.isdir(g):
+                shutil.rmtree(g)
+            else:
+                os.remove(g)
 
     # Record successful completion
     success_file = '{0}/state/part{1}{2}.done'.format(chunk_obj.outdir,
