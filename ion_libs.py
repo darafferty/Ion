@@ -484,11 +484,14 @@ def peel_band(band):
                 scalar_phase=band.use_scalar_phase, phase_only=True,
                 time_block=band.time_block, beam_mode=band.beam_mode,
                 uvmin=band.uvmin, skip_field=True, input_column='SUBTRACTED_DATA')
-            calibrate(newmsname, peelparset_timecorr, cal_skymodel, msname,
-                use_timecorr=True, outdir=band.outdir, instrument='instrument',
-                time_block=band.time_block, ionfactor=band.ionfactor,
-                solint=band.solint_min,
-                ncores=band.ncores_per_cal, resume=band.resume)
+            try:
+                calibrate(newmsname, peelparset_timecorr, cal_skymodel, msname,
+                    use_timecorr=True, outdir=band.outdir, instrument='instrument',
+                    time_block=band.time_block, ionfactor=band.ionfactor,
+                    solint=band.solint_min,
+                    ncores=band.ncores_per_cal, resume=band.resume)
+            except Exception as e:
+                log.error(str(e))
         else:
             make_peeling_parset(peelparset_timecorr, band.peel_bins,
                 scalar_phase=band.use_scalar_phase, phase_only=True,
@@ -852,8 +855,6 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
         # Perform a time-correlated solve
         dataset = msname
         blockl = time_block
-        anttab = pt.table(dataset + '/ANTENNA', ack=False)
-        antlist = anttab.getcol('NAME')
         instrument_orig  = msname+'/instrument'
         instrument_out = msname+'/instrument_out'
         if solint < 1:
@@ -1094,9 +1095,6 @@ def modify_weights(msname, ionfactor, dryrun=False, ntot=None, trim_start=True):
     freq = freqtab.getcol('REF_FREQUENCY')
     freqtab.close()
     wav = 3e8 / freq
-    anttab = pt.table(msname + '/ANTENNA', ack=False)
-    antlist = anttab.getcol('NAME')
-    anttab.close()
     fwhm_list = []
 
     for t2 in t.iter(["ANTENNA1", "ANTENNA2"]):
