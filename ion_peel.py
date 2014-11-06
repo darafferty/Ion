@@ -188,6 +188,8 @@ if __name__=='__main__':
             os.mkdir(outdir+"/parsets")
         if not os.path.isdir(outdir+"/state"):
             os.mkdir(outdir+"/state")
+        if not os.path.isdir(outdir+"/parmdbs"):
+            os.mkdir(outdir+"/parmdbs")
         if os.path.exists(outfile):
             if options.clobber:
                 subprocess.call("rm -rf {0}".format(outfile), shell=True)
@@ -375,7 +377,7 @@ if __name__=='__main__':
                     band.solint_amp = 330
                     band.time_block = 60 # number of time samples in a block
                     band.ionfactor = options.ionfactor
-                    band.ncores_per_cal = 3
+                    band.ncores_per_cal = 6
                     band.do_each_cal_sep = False
                     band.scale_solint = options.scale
                     band.do_dirindep = options.dirindep
@@ -442,10 +444,7 @@ if __name__=='__main__':
                     band.init_logger = True # So that a new logger is started on each engine
 
                 # Map list of bands to the engines
-                ar = lb.map(peel_band, band_list)
-                for r in ar:
-                    log.info("Peeling of %s finished on %s"%(r['name'], r['host']))
-
+                lb.map(peel_band, band_list)
             else:
                 pool = MyPool(options.ncores)
                 pool.map(peel_band, band_list)
@@ -454,6 +453,7 @@ if __name__=='__main__':
 
             # Clean up
             subprocess.call('rm -rf calibrate-stand-alone*.log', shell=True)
+            subprocess.call('rm -rf calibrate-stand-alone*.log.bak', shell=True)
 
             # Write all the solutions to an H5parm file for later use in LoSoTo.
             write_sols(field_list, outdir+'/'+outfile, flag_outliers=options.flag)

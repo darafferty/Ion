@@ -458,7 +458,7 @@ def peel_band(band):
                         band.outdir, msname)
                     make_subtract_parset(subparset, source_list=None, beam_mode=band.beam_mode,
                         output_column='SUBTRACTED_DATA')
-                    subprocess.call("calibrate-stand-alone -f {0} {1} {2} > {3}/logs/"
+                    subprocess.call("calibrate-stand-alone {0} {1} {2} > {3}/logs/"
                         "{4}_subtract_field.log 2>&1".format(newmsname, subparset,
                         skymodel, band.outdir, msname), shell=True)
 
@@ -959,7 +959,7 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
             parms = pdb.getValuesGrid("*")
             parms_old = pdb.getValuesGrid("*")
             for chunk_obj in chunk_list:
-                instrument_input = chunk_obj.output + '/instrument'
+                instrument_input = '{1}/parmdbs/part{2}_instrument'.format(chunk_obj.outdir, chunk_obj.chunk)
                 try:
                     pdb_part = lofar.parmdb.parmdb(instrument_input)
                 except:
@@ -975,7 +975,6 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
                         tmp1 = np.copy(parms[key]['values'][:,0])
                         tmp1[chunk_obj.solnum] = np.copy(parms_part[key]['values'][0,0])
                         parms[key]['values'][:,0] = tmp1
-                del pdb_part
 
             # Remove previous parmdb values
             for line in parms_old:
@@ -983,13 +982,8 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
 
             # Add new values
             pdb.addValues(parms)
-            del pdb
         except Exception as e:
             log.error(str(e))
-
-        # Clean up
-        subprocess.call('rm -rf {0}/part*{1}*'.format(chunk_list[0].outdir,
-            os.path.basename(chunk_list[0].dataset)), shell=True)
 
 
 def run_chunk(chunk_obj):
@@ -1008,13 +1002,11 @@ def run_chunk(chunk_obj):
     # Calibrate
     calibrate_chunk(chunk_obj)
 
-    # Clean up, leaving instrument parmdb for later collection
-    for g in glob.glob('{0}/*'.format(chunk_obj.output)):
-        if 'instrument' not in g:
-            if os.path.isdir(g):
-                shutil.rmtree(g)
-            else:
-                os.remove(g)
+    # Clean up, copying instrument parmdb for later collection
+    subprocess.call('cp -r {0}/instrument {1}/parmdbs/part{2}_instrument'.
+        format(chunk_obj.output, chunk_obj.outdir, chunk_obj.chunk),
+        shell=True)
+    shutil.rmtree(chunk_obj.output)
 
     # Record successful completion
     success_file = '{0}/state/part{1}{2}.done'.format(chunk_obj.outdir,
