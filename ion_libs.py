@@ -959,7 +959,8 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
             parms = pdb.getValuesGrid("*")
             parms_old = pdb.getValuesGrid("*")
             for chunk_obj in chunk_list:
-                instrument_input = '{1}/parmdbs/part{2}_instrument'.format(chunk_obj.outdir, chunk_obj.chunk)
+                instrument_input = '{0}/parmdbs/part{1}{2}_instrument'.format(chunk_obj.outdir,
+                    chunk_obj.chunk, os.path.basename(chunk_obj.dataset))
                 try:
                     pdb_part = lofar.parmdb.parmdb(instrument_input)
                 except:
@@ -1003,9 +1004,9 @@ def run_chunk(chunk_obj):
     calibrate_chunk(chunk_obj)
 
     # Clean up, copying instrument parmdb for later collection
-    subprocess.call('cp -r {0}/instrument {1}/parmdbs/part{2}_instrument'.
-        format(chunk_obj.output, chunk_obj.outdir, chunk_obj.chunk),
-        shell=True)
+    subprocess.call('cp -r {0}/instrument {1}/parmdbs/part{2}{3}_instrument'.
+        format(chunk_obj.output, chunk_obj.outdir, chunk_obj.chunk,
+        os.path.basename(chunk_obj.dataset)), shell=True)
     shutil.rmtree(chunk_obj.output)
 
     # Record successful completion
