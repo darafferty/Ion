@@ -847,18 +847,23 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
     """Calls BBS to calibrate with optional time-correlated fitting"""
     log = logging.getLogger("Calib")
 
+    instrument_orig = '{0}/instrument'.format(msname)
+    instrument_out = '{0}/instrument_out'.format(msname)
+
+    # Make sure output parmdb does not exist
+    if os.path.exists(instrument_out):
+        shutil.rmtree(instrument_out)
+
     if not use_timecorr:
         subprocess.call("calibrate-stand-alone {0} {1} {2} > {3}/logs/"
             "{4}_peeling_calibrate.log 2>&1".format(msname, parset, skymodel,
             outdir, logname_root), shell=True)
-        subprocess.call("cp -r {0}/instrument {0}/instrument_out".format(msname),
+        subprocess.call("cp -r {0} {1}".format(instrument_orig, instrument_out),
             shell=True)
     else:
         # Perform a time-correlated solve
         dataset = msname
         blockl = time_block
-        instrument_orig  = msname+'/instrument'
-        instrument_out = msname+'/instrument_out'
         if solint < 1:
             solint = 1
 
@@ -893,13 +898,6 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
         # Update cellsize and chunk size of parset
         update_parset(parset)
 
-        # Make a copy of the master parmdb to store time-correlated solutions
-        # in, resetting and flagging as needed
-        if not resume or (resume and not os.path.exists(instrument_out)):
-            os.system('rm -rf ' +instrument_out)
-            clean_and_copy_parmdb(instrument_orig, instrument_out, blockl,
-                msname=msname, timepersample=timepersample)
-
         # Set up the chunks
         chunk_list = []
         tlen_mod = tlen / 2.0 # hours
@@ -929,40 +927,43 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
             chunk_obj.logname_root = logname_root + '_part' + str(c)
             chunk_obj.solnum = chunk_obj.chunk
             chunk_obj.output = chunk_obj.outdir + '/part' + str(chunk_obj.chunk) + os.path.basename(chunk_obj.dataset)
+            chunk_obj.output_instrument = '{0}/parmdbs/part{1}{2}_instrument'.format(chunk_obj.outdir,
+                    chunk_obj.chunk, os.path.basename(chunk_obj.dataset))
+            chunk_obj.state_file = '{0}/state/part{1}{2}.done'.format(chunk_obj.outdir,
+                    chunk_obj.chunk, os.path.basename(chunk_obj.dataset))
             chunk_obj.ntot = blockl
             chunk_list.append(chunk_obj)
 
+        chunk_list_orig = chunk_list[:]
         if resume:
             # Determine which chunks need to be calibrated
-            for chunk in chunk_list[:]:
-                if os.path.exists('{0}/state/part{1}{2}.done'.format(chunk.outdir,
-                    chunk.chunk, os.path.basename(chunk.dataset))):
-                    chunk_list.remove(chunk)
+            for chunk_obj in chunk_list_orig:
+                if os.path.exists(chunk_obj.state_file):
+                    chunk_list.remove(chunk_obj)
             if len(chunk_list) > 0:
                 log.info('Resuming time-correlated calibration for {0}...'.format(msname))
-                log.debug('Chunks remaining to calibrate:')
-                for chunk in chunk_list:
-                    log.debug('  Solution #{0}'.format(chunk.chunk))
+                log.debug('Chunks remaining to be calibrated:')
+                for chunk_obj in chunk_list:
+                    log.debug('  Solution #{0}'.format(chunk_obj.chunk))
             else:
-                log.info('Peeling complete for {0}. Nothing to resume.'.format(msname))
-                return
+                log.info('Peeling complete for {0}.'.format(msname))
 
-        # Run chunks in parallel
-        pool = multiprocessing.Pool(ncores)
-        pool.map(run_chunk, chunk_list)
-        pool.close()
-        pool.join()
+        if len(chunk_list) > 0:
+            # Run chunks in parallel
+            pool = multiprocessing.Pool(ncores)
+            pool.map(run_chunk, chunk_list)
+            pool.close()
+            pool.join()
 
-        # Copy over the solutions to the final parmdb
+        # Copy over the solutions to the final output parmdb
         try:
-            pdb = lofar.parmdb.parmdb(instrument_out)
+            log.info('Copying time-correlated solutions to output parmdb...')
+            pdb = lofar.parmdb.parmdb(instrument_orig)
             parms = pdb.getValuesGrid("*")
-            parms_old = pdb.getValuesGrid("*")
-            for chunk_obj in chunk_list:
-                instrument_input = '{0}/parmdbs/part{1}{2}_instrument'.format(chunk_obj.outdir,
-                    chunk_obj.chunk, os.path.basename(chunk_obj.dataset))
+            for chunk_obj in chunk_list_orig:
+                chunk_instrument = chunk_obj.output_instrument
                 try:
-                    pdb_part = lofar.parmdb.parmdb(instrument_input)
+                    pdb_part = lofar.parmdb.parmdb(chunk_instrument)
                 except:
                     continue
                 parms_part = pdb_part.getValuesGrid("*")
@@ -973,16 +974,12 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
                 # Hard-coded to look for Phase and/or TEC parms
                 # Presumably OK to use other parms with additional 'or' statments
                     if 'Phase' in key or 'TEC' in key:
-                        tmp1 = np.copy(parms[key]['values'][:,0])
-                        tmp1[chunk_obj.solnum] = np.copy(parms_part[key]['values'][0,0])
-                        parms[key]['values'][:,0] = tmp1
+                        parms[key]['values'][chunk_obj.solnum, 0] = np.copy(
+                            parms_part[key]['values'][0, 0])
 
-            # Remove previous parmdb values
-            for line in parms_old:
-                pdb.deleteValues(line)
-
-            # Add new values
-            pdb.addValues(parms)
+            # Add new values to final output parmdb
+            pdb_out = lofar.parmdb.parmdb(instrument_out, create=True)
+            pdb_out.addValues(parms)
         except Exception as e:
             log.error(str(e))
 
@@ -1004,14 +1001,12 @@ def run_chunk(chunk_obj):
     calibrate_chunk(chunk_obj)
 
     # Clean up, copying instrument parmdb for later collection
-    subprocess.call('cp -r {0}/instrument {1}/parmdbs/part{2}{3}_instrument'.
-        format(chunk_obj.output, chunk_obj.outdir, chunk_obj.chunk,
-        os.path.basename(chunk_obj.dataset)), shell=True)
+    subprocess.call('cp -r {0}/instrument {1}'.
+        format(chunk_obj.output, chunk_obj.output_instrument), shell=True)
     shutil.rmtree(chunk_obj.output)
 
     # Record successful completion
-    success_file = '{0}/state/part{1}{2}.done'.format(chunk_obj.outdir,
-                    chunk_obj.chunk, os.path.basename(chunk_obj.dataset))
+    success_file = chunk_obj.state_file
     cmd = 'touch {0}'.format(success_file)
     subprocess.call(cmd, shell=True)
 
@@ -1028,8 +1023,7 @@ def calibrate_chunk(chunk_obj):
         chunk_obj.skymodel, chunk_obj.outdir, chunk_obj.logname_root), shell=True)
 
 
-def clean_and_copy_parmdb(instrument_name, instrument_out, blockl,
-    msname=None, timepersample=10.0):
+def clean_and_copy_parmdb(instrument_name, instrument_out, blockl):
     """Resets and copies a parmdb
 
     instrument_name - parmdb to copy
