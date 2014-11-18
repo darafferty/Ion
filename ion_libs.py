@@ -841,10 +841,53 @@ def makeFlagParset(h5file, solset):
     return parset
 
 
+def apply_band(band):
+    """Apply TEC screen to band"""
+    if band.init_logger:
+        logfilename = band.outdir + '/logs/' + band.msname + '.apply_band.log'
+        init_logger(logfilename)
+    log = logging.getLogger("Applier")
+
+    # Wrap everything in a try-except block to be sure any exception is caught
+    try:
+        # Define file names
+        msname = band.msname
+        skymodel =  "{0}/skymodels/{1}.apply.skymodel".format(band.outdir, msname)
+        screen_parset = "{0}/parsets/{1}.screen.parset".format(band.outdir, msname)
+        noscreen_parset = "{0}/parsets/{1}.noscreen.parset".format(band.outdir, msname)
+
+        # Perform dir-independent calibration without the TEC screen to set up
+        # instrument db
+        if band.do_dirindep and not band.resume or (band.do_dirindep and band.resume
+            and not os.path.exists('{0}/state/{1}_dirindep_noscreen.done'.format(band.outdir,
+            band.msname))):
+            make_noscreen_parset(noscreen_parset, scalar_phase=band.use_scalar_phase,
+                sol_int=band.solint_min, beam_mode=band.beam_mode, uvmin=band.uvmin)
+            subprocess.call("calibrate-stand-alone -f {0} {1} {2} > {3}/logs/"
+                "{4}_dirindep_noscreen_calibrate.log 2>&1".format(newmsname, noscreen_parset,
+                skymodel, band.outdir, msname), shell=True)
+
+            # Save state
+            cmd = 'touch {0}/state/{1}_dirindep.done'.format(band.outdir,
+                band.msname)
+            subprocess.call(cmd, shell=True)
+
+        # Perform dir-independent calibration with the TEC screen
+        make_screen_parset(screen_parset, scalar_phase=band.use_scalar_phase,
+            sol_int=band.solint_min, beam_mode=band.beam_mode, uvmin=band.uvmin)
+        chunk_list = calibrate(newmsname, peelparset_timecorr, skymodel, msname,
+            use_timecorr=True, outdir=band.outdir, instrument='instrument',
+            time_block=band.time_block, ionfactor=None,
+            solint=band.solint_min, ncores=band.ncores_per_cal, resume=band.resume)
+        return chunk_list
+    except Exception as e:
+        log.error(str(e))
+
+
 def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
     time_block=None, ionfactor=0.5, outdir='.', instrument='instrument',
     solint=None, ncores=1, resume=False):
-    """Calls BBS to calibrate with optional time-correlated fitting"""
+    """Calls BBS to calibrate with optional time-correlated or distributed fitting"""
     log = logging.getLogger("Calib")
 
     instrument_orig = '{0}/instrument'.format(msname)
@@ -861,7 +904,7 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
         subprocess.call("cp -r {0} {1}".format(instrument_orig, instrument_out),
             shell=True)
     else:
-        # Perform a time-correlated solve
+        # Perform a time-correlated or distributed solve
         dataset = msname
         blockl = time_block
         if solint < 1:
@@ -876,33 +919,52 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
         t.close()
 
         # Calculate various intervals
-        fwhm_min, fwhm_max = modify_weights(msname, ionfactor, dryrun=True) # s
-        if time_block is None:
-            # Set blockl to enclose the max FWHM and be divisible by 2 and by solint
-            blockl = int(np.ceil(fwhm_max / timepersample / 2.0 / solint) * 2 * solint)
-        tdiff = solint * timepersample / 3600. # difference between solutions in hours
+        if ionfactor is not None:
+            fwhm_min, fwhm_max = modify_weights(msname, ionfactor, dryrun=True) # s
+            if time_block is None:
+                # Set blockl to enclose the max FWHM and be divisible by 2 and by solint
+                blockl = int(np.ceil(fwhm_max / timepersample / 2.0 / solint) * 2 * solint)
+        tdiff = solint * timepersample / 3600. # difference between chunk start times in hours
         tlen = timepersample * np.float(blockl) / 3600. # length of block in hours
         nsols = int(np.ceil(trows / solint)) # number of solutions
 
-        log.info('Performing time-correlated peeling for {0}...\n'
-            '      Time per sample: {1} (s)\n'
-            '      Samples in total: {2}\n'
-            '      Block size: {3} (samples)\n'
-            '                  {4} (s)\n'
-            '      Solution interval: {5} (samples)\n'
-            '      Number of solutions: {6}\n'
-            '      Ionfactor: {7}\n'
-            '      FWHM range: {8} - {9} (s)'.format(msname, timepersample,
-            trows, blockl, tlen*3600.0, solint, nsols, ionfactor, fwhm_min, fwhm_max))
+        if ionfactor is not None:
+            log.info('Performing time-correlated peeling for {0}...\n'
+                '      Time per sample: {1} (s)\n'
+                '      Samples in total: {2}\n'
+                '      Block size: {3} (samples)\n'
+                '                  {4} (s)\n'
+                '      Solution interval: {5} (samples)\n'
+                '      Number of solutions: {6}\n'
+                '      Ionfactor: {7}\n'
+                '      FWHM range: {8} - {9} (s)'.format(msname, timepersample,
+                trows, blockl, tlen*3600.0, solint, nsols, ionfactor, fwhm_min, fwhm_max))
+        else:
+            log.info('Performing distributed calibration for {0}...\n'
+                '      Time per sample: {1} (s)\n'
+                '      Samples in total: {2}\n'
+                '      Block size: {3} (samples)\n'
+                '                  {4} (s)\n'
+                '      Solution interval: {5} (samples)\n'
+                '      Number of solutions: {6}\n'
+                '      Ionfactor: {7}'.format(msname, timepersample,
+                trows, blockl, tlen*3600.0, solint, nsols, ionfactor))
+
 
         # Update cellsize and chunk size of parset
-        update_parset(parset)
+        if ionfactor is not None:
+            update_parset(parset)
 
         # Set up the chunks
-        chunk_list = []
-        tlen_mod = tlen / 2.0 # hours
-        chunk_mid_start = blockl / 2 / solint
-        chunk_mid_end = nsols - blockl / 2 / solint
+        if ionfactor is None:
+            chunk_mid_start = 0
+            chunk_mid_end = nsols / blockl
+            tdiff = tlen
+        else:
+            chunk_list = []
+            tlen_mod = tlen / 2.0 # hours
+            chunk_mid_start = blockl / 2 / solint
+            chunk_mid_end = nsols - blockl / 2 / solint
         for c in range(nsols):
             chunk_obj = Chunk(dataset)
             chunk_obj.chunk = c
@@ -926,12 +988,14 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
             chunk_obj.skymodel = skymodel
             chunk_obj.logname_root = logname_root + '_part' + str(c)
             chunk_obj.solnum = chunk_obj.chunk
+            chunk_obj.solrange = range(chunk_obj.solnum, chunk_obj.solnum+np.ceil(blockl/solint))
             chunk_obj.output = chunk_obj.outdir + '/part' + str(chunk_obj.chunk) + os.path.basename(chunk_obj.dataset)
             chunk_obj.output_instrument = '{0}/parmdbs/part{1}{2}_instrument'.format(chunk_obj.outdir,
                     chunk_obj.chunk, os.path.basename(chunk_obj.dataset))
             chunk_obj.state_file = '{0}/state/part{1}{2}.done'.format(chunk_obj.outdir,
                     chunk_obj.chunk, os.path.basename(chunk_obj.dataset))
             chunk_obj.ntot = blockl
+            chunk_obj.start_delay = 0.0
             chunk_list.append(chunk_obj)
 
         chunk_list_orig = chunk_list[:]
@@ -949,6 +1013,9 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
                 log.info('Peeling complete for {0}.'.format(msname))
 
         if len(chunk_list) > 0:
+            if ionfactor is None:
+                return chunk_list
+
             # Run chunks in parallel
             pool = multiprocessing.Pool(ncores)
             pool.map(run_chunk, chunk_list)
@@ -993,29 +1060,35 @@ def run_chunk(chunk_obj):
     4. clean directory of files created
     """
     log = logging.getLogger("Run_chunk")
+    time.sleep(chunk_obj.start_delay)
 
-    # Split the dataset into parts
-    split_ms(chunk_obj.dataset, chunk_obj.output, chunk_obj.t0, chunk_obj.t1)
+    # Wrap everything in a try-except block to be sure any exception is caught
+    try:
+        # Split the dataset into parts
+        split_ms(chunk_obj.dataset, chunk_obj.output, chunk_obj.t0, chunk_obj.t1)
 
-    # Calibrate
-    calibrate_chunk(chunk_obj)
+        # Calibrate
+        calibrate_chunk(chunk_obj)
 
-    # Clean up, copying instrument parmdb for later collection
-    subprocess.call('cp -r {0}/instrument {1}'.
-        format(chunk_obj.output, chunk_obj.output_instrument), shell=True)
-    shutil.rmtree(chunk_obj.output)
+        # Clean up, copying instrument parmdb for later collection
+        subprocess.call('cp -r {0}/instrument {1}'.
+            format(chunk_obj.output, chunk_obj.output_instrument), shell=True)
+        shutil.rmtree(chunk_obj.output)
 
-    # Record successful completion
-    success_file = chunk_obj.state_file
-    cmd = 'touch {0}'.format(success_file)
-    subprocess.call(cmd, shell=True)
+        # Record successful completion
+        success_file = chunk_obj.state_file
+        cmd = 'touch {0}'.format(success_file)
+        subprocess.call(cmd, shell=True)
+    except Exception as e:
+        log.error(str(e))
 
 
 def calibrate_chunk(chunk_obj):
     """Calibrates a single MS chunk using a time-correlated solve"""
-    # Modify weights
-    fwhm_min, fwhm_max = modify_weights(chunk_obj.output, chunk_obj.ionfactor,
-        ntot=chunk_obj.ntot, trim_start=chunk_obj.trim_start)
+    if chunk_obj.ionfactor is not None:
+        # Modify weights
+        fwhm_min, fwhm_max = modify_weights(chunk_obj.output, chunk_obj.ionfactor,
+            ntot=chunk_obj.ntot, trim_start=chunk_obj.trim_start)
 
     # Run bbs
     subprocess.call("calibrate-stand-alone {0} {1} {2} > {3}/logs/"

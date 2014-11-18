@@ -22,6 +22,13 @@ import lofar.parameterset
 from losoto.h5parm import h5parm
 import pyrap.tables
 import logging
+try:
+    import loadbalance
+    has_ipy_parallel = True
+except ImportError:
+    has_ipy_parallel = False
+from Ion.ion_libs import *
+
 _version = '1.0'
 
 
@@ -266,6 +273,8 @@ if __name__=='__main__':
         'to disable the beam [default: %default]', type='str', default='ARRAY_FACTOR')
     opt.add_option('-c', '--clobber', help='Clobber existing output files? '
         '[default: %default]', action='store_true', default=False)
+    opt.add_option('-T', '--torque', help='Use torque? '
+        '[default: %default]', action='store_true', default=False)
     (options, args) = opt.parse_args()
 
     # Get inputs
@@ -292,6 +301,11 @@ if __name__=='__main__':
                 'in .MS, .ms, .ms.peeled, .MS.peeled')
             sys.exit()
 
+        if not os.path.isdir(outdir+"/state"):
+            os.mkdir(outdir+"/state")
+        if not os.path.isdir(outdir+"/parmdbs"):
+            os.mkdir(outdir+"/parmdbs")
+
         logfilename = options.indir + '/ion_apply.log'
         init_logger(logfilename, debug=options.verbose)
         log = logging.getLogger("Main")
@@ -312,13 +326,55 @@ if __name__=='__main__':
         skymodel_list = [options.model] * len(ms_list)
         solint_list = [options.solint] * len(ms_list)
         beam_list = [options.beam] * len(ms_list)
-        workers = Pool(processes=min(len(ms_list), options.ncores))
         if options.gaincal:
-            workers.map(calibrateNDPPP, zip(ms_list, out_parmdb_list,
-                skymodel_list, solint_list))
+            calibrateNDPPP(ms_list, out_parmdb_list,
+                skymodel_list, solint_list)
         else:
-            workers.map(calibrateBBS, zip(ms_list, out_parmdb_list,
-                skymodel_list, solint_list, beam_list))
+            if has_ipy_parallel and options.torque:
+#                 lb = loadbalance.LoadBalance(ppn=ncores, logfile=None,
+#                     loglevel=logging.DEBUG, file_to_source='/home/sttf201/init-lofar.sh')
+#                 lb.sync_import('from Ion.ion_libs import *')
+
+                for ms in ms_list:
+                    chunk_list = apply_band(ms)
+
+                    for i, chunk in enumerate(chunk_list):
+                        chunk.start_delay = i * 10.0 # start delay in seconds to avoid too much disk IO
+
+                    # Map list of bands to the engines
+                    0/0
+                    lb.map(run_chunk, chunk_list)
+
+                    # Copy over the solutions to the final output parmdb
+                    try:
+                        log.info('Copying distributed solutions to output parmdb...')
+                        pdb = lofar.parmdb.parmdb(instrument_orig)
+                        parms = pdb.getValuesGrid("*")
+                        for chunk_obj in chunk_list_orig:
+                            chunk_instrument = chunk_obj.output_instrument
+                            try:
+                                pdb_part = lofar.parmdb.parmdb(chunk_instrument)
+                            except:
+                                continue
+                            parms_part = pdb_part.getValuesGrid("*")
+                            keynames = parms_part.keys()
+
+                            # Replace old value with new
+                            for key in keynames:
+                            # Hard-coded to look for Phase and/or TEC parms
+                            # Presumably OK to use other parms with additional 'or' statments
+                                if 'Phase' in key or 'TEC' in key:
+                                    parms[key]['values'][chunk_obj.solrange, 0] = np.copy(
+                                        parms_part[key]['values'][0:len(chunk_obj.solrange), 0])
+
+                        # Add new values to final output parmdb
+                        pdb_out = lofar.parmdb.parmdb(instrument_out, create=True)
+                        pdb_out.addValues(parms)
+                    except Exception as e:
+                        log.error(str(e))
+            else:
+                calibrateBBS(ms_list, out_parmdb_list,
+                    skymodel_list, solint_list, beam_list)
 
         log.info('TEC screen application complete.')
 
