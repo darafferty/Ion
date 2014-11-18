@@ -275,6 +275,8 @@ if __name__=='__main__':
         '[default: %default]', action='store_true', default=False)
     opt.add_option('-T', '--torque', help='Use torque? '
         '[default: %default]', action='store_true', default=False)
+    opt.add_option('-r', '--resume', help='Try to resume interupted time-correlated '
+        'calibration? [default: %default]', action='store_true', default=False)
     (options, args) = opt.parse_args()
 
     # Get inputs
