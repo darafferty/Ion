@@ -339,7 +339,16 @@ if __name__=='__main__':
                 band_list = []
                 for ms in ms_list:
                     band_list.append(Band(ms, outdir))
-                for band in band_list:
+                for i, band in enumerate(band_list):
+                    # For each Band instance, set options
+                    band.beam_mode = options.beam
+                    band.use_timecorr = True
+                    band.time_block = 10 # number of time samples in a block
+                    band.ionfactor = None
+                    band.ncores_per_cal = 6
+                    band.uvmin = options.uvmin
+                    band.resume = options.resume
+                    band.init_logger = True
                     chunk_list = apply_band(band)
 
                     for i, chunk in enumerate(chunk_list):
