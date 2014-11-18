@@ -915,7 +915,7 @@ def apply_band(band):
         # Perform dir-independent calibration with the TEC screen
         make_screen_parset(screen_parset, solint=band.solint_min,
             beam_mode=band.beam_mode, uvmin=band.uvmin)
-        chunk_list = calibrate(newmsname, screen_parset, skymodel, msname,
+        chunk_list = calibrate(msname, screen_parset, skymodel, msname,
             use_timecorr=True, outdir=band.outdir, instrument=band.parmdb,
             time_block=band.time_block, ionfactor=None, ncores=band.ncores_per_cal,
             resume=band.resume)
