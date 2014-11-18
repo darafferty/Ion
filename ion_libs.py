@@ -858,7 +858,7 @@ def apply_band(band):
 
         # Perform dir-independent calibration without the TEC screen to set up
         # instrument db
-        if band.do_dirindep and not band.resume or (band.do_dirindep and band.resume
+        if not band.resume or (band.resume
             and not os.path.exists('{0}/state/{1}_dirindep_noscreen.done'.format(band.outdir,
             band.msname))):
             make_noscreen_parset(noscreen_parset, scalar_phase=band.use_scalar_phase,
@@ -877,7 +877,7 @@ def apply_band(band):
             sol_int=band.solint_min, beam_mode=band.beam_mode, uvmin=band.uvmin)
         chunk_list = calibrate(newmsname, peelparset_timecorr, skymodel, msname,
             use_timecorr=True, outdir=band.outdir, instrument='instrument',
-            time_block=band.time_block, ionfactor=None,
+            time_block=band.time_block, ionfactor=None, parmdb=band.parmdb,
             solint=band.solint_min, ncores=band.ncores_per_cal, resume=band.resume)
         return chunk_list
     except Exception as e:
@@ -885,13 +885,17 @@ def apply_band(band):
 
 
 def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
-    time_block=None, ionfactor=0.5, outdir='.', instrument='instrument',
+    time_block=None, ionfactor=0.5, parmdb=None, outdir='.', instrument='instrument',
     solint=None, ncores=1, resume=False):
     """Calls BBS to calibrate with optional time-correlated or distributed fitting"""
     log = logging.getLogger("Calib")
 
-    instrument_orig = '{0}/instrument'.format(msname)
-    instrument_out = '{0}/instrument_out'.format(msname)
+    if parmdb is None:
+        instrument_orig = '{0}/instrument'.format(msname)
+        instrument_out = '{0}/instrument_out'.format(msname)
+    else:
+        instrument_orig = parmdb
+        instrument_out = '{0}/instrument_out'.format(msname)
 
     # Make sure output parmdb does not exist
     if os.path.exists(instrument_out):

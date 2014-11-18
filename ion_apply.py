@@ -352,7 +352,8 @@ if __name__=='__main__':
                     band.ncores_per_cal = 6
                     band.resume = options.resume
                     band.init_logger = True
-                    chunk_list = apply_band(band)
+                    band.parmdb = options.parmdb
+                    chunk_list, chunk_list_orig = apply_band(band)
 
                     for i, chunk in enumerate(chunk_list):
                         chunk.start_delay = i * 10.0 # start delay in seconds to avoid too much disk IO
@@ -364,28 +365,41 @@ if __name__=='__main__':
                     # Copy over the solutions to the final output parmdb
                     try:
                         log.info('Copying distributed solutions to output parmdb...')
-                        pdb = lofar.parmdb.parmdb(instrument_orig)
-                        parms = pdb.getValuesGrid("*")
+                        instrument_out = out_parmdb + '_total'
+                        os.system("rm %s -rf" % instrument_out)
+                        pdb_out = lofar.parmdb.parmdb(instrument_out, create=True)
                         for chunk_obj in chunk_list_orig:
                             chunk_instrument = chunk_obj.output_instrument
                             try:
                                 pdb_part = lofar.parmdb.parmdb(chunk_instrument)
                             except:
                                 continue
-                            parms_part = pdb_part.getValuesGrid("*")
-                            keynames = parms_part.keys()
+                            for parmname in pdb_part.getNames():
+                                v = pdb_part.getValuesGrid(parmname)
+                                pdb_out.addValues(v)
 
-                            # Replace old value with new
-                            for key in keynames:
-                            # Hard-coded to look for Phase and/or TEC parms
-                            # Presumably OK to use other parms with additional 'or' statments
-                                if 'Phase' in key or 'TEC' in key:
-                                    parms[key]['values'][chunk_obj.solrange, 0] = np.copy(
-                                        parms_part[key]['values'][0:len(chunk_obj.solrange), 0])
-
-                        # Add new values to final output parmdb
-                        pdb_out = lofar.parmdb.parmdb(instrument_out, create=True)
-                        pdb_out.addValues(parms)
+#                         pdb = lofar.parmdb.parmdb(instrument_orig)
+#                         parms = pdb.getValuesGrid("*")
+#                         for chunk_obj in chunk_list_orig:
+#                             chunk_instrument = chunk_obj.output_instrument
+#                             try:
+#                                 pdb_part = lofar.parmdb.parmdb(chunk_instrument)
+#                             except:
+#                                 continue
+#                             parms_part = pdb_part.getValuesGrid("*")
+#                             keynames = parms_part.keys()
+#
+#                             # Replace old value with new
+#                             for key in keynames:
+#                             # Hard-coded to look for Phase and/or TEC parms
+#                             # Presumably OK to use other parms with additional 'or' statments
+#                                 if 'Phase' in key or 'TEC' in key:
+#                                     parms[key]['values'][chunk_obj.solrange, 0] = np.copy(
+#                                         parms_part[key]['values'][0:len(chunk_obj.solrange), 0])
+#
+#                         # Add new values to final output parmdb
+#                         pdb_out = lofar.parmdb.parmdb(instrument_out, create=True)
+#                         pdb_out.addValues(parms)
                     except Exception as e:
                         log.error(str(e))
             else:
