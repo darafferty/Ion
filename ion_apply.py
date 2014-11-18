@@ -353,6 +353,7 @@ if __name__=='__main__':
                     band.resume = options.resume
                     band.init_logger = True
                     band.parmdb = options.parmdb
+                    band.solint_min = options.solint
                     chunk_list, chunk_list_orig = apply_band(band)
 
                     for i, chunk in enumerate(chunk_list):
