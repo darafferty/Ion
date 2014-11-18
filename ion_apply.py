@@ -338,7 +338,7 @@ if __name__=='__main__':
                 skymodel_list, solint_list)
         else:
             if has_ipy_parallel and options.torque:
-                lb = loadbalance.LoadBalance(ppn=ncores, logfile=None,
+                lb = loadbalance.LoadBalance(ppn=options.ncores, logfile=None,
                     loglevel=logging.DEBUG, file_to_source='/home/sttf201/init-lofar.sh')
                 lb.sync_import('from Ion.ion_libs import *')
 
