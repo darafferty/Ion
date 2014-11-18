@@ -894,7 +894,7 @@ def apply_band(band):
         msname = band.msname
         skymodel =  "{0}/skymodels/{1}.apply.skymodel".format(band.outdir, msname)
         screen_parset = "{0}/parsets/{1}.screen.parset".format(band.outdir, msname)
-        noscreen_parset = "{0}/parsets/{1}.noscreen.parset".format(band.outdir, msname)
+#         noscreen_parset = "{0}/parsets/{1}.noscreen.parset".format(band.outdir, msname)
 
         # Perform dir-independent calibration without the TEC screen to set up
         # instrument db
@@ -915,27 +915,23 @@ def apply_band(band):
         # Perform dir-independent calibration with the TEC screen
         make_screen_parset(screen_parset, sol_int=band.solint_min,
             beam_mode=band.beam_mode, uvmin=band.uvmin)
-        chunk_list = calibrate(newmsname, peelparset_timecorr, skymodel, msname,
-            use_timecorr=True, outdir=band.outdir, instrument='instrument',
-            time_block=band.time_block, ionfactor=None, parmdb=band.parmdb,
-            solint=band.solint_min, ncores=band.ncores_per_cal, resume=band.resume)
+        chunk_list = calibrate(newmsname, screen_parset, skymodel, msname,
+            use_timecorr=True, outdir=band.outdir, instrument=band.parmdb,
+            time_block=band.time_block, ionfactor=None, ncores=band.ncores_per_cal,
+            resume=band.resume)
         return chunk_list
     except Exception as e:
         log.error(str(e))
 
 
 def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
-    time_block=None, ionfactor=0.5, parmdb=None, outdir='.', instrument='instrument',
+    time_block=None, ionfactor=0.5, outdir='.', instrument='instrument',
     solint=None, ncores=1, resume=False):
     """Calls BBS to calibrate with optional time-correlated or distributed fitting"""
     log = logging.getLogger("Calib")
 
-    if parmdb is None:
-        instrument_orig = '{0}/instrument'.format(msname)
-        instrument_out = '{0}/instrument_out'.format(msname)
-    else:
-        instrument_orig = parmdb
-        instrument_out = '{0}/instrument_out'.format(msname)
+    instrument_orig = '{0}/{1}'.format(msname, instrument)
+    instrument_out = '{0}/{1}_out'.format(msname, instrument)
 
     # Make sure output parmdb does not exist
     if os.path.exists(instrument_out):
