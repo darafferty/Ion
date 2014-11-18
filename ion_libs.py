@@ -892,7 +892,7 @@ def apply_band(band):
     try:
         # Define file names
         msname = band.msname
-        skymodel =  "{0}/skymodels/{1}.apply.skymodel".format(band.outdir, msname)
+        skymodel =  band.skymodel
         screen_parset = "{0}/parsets/{1}.screen.parset".format(band.outdir, msname)
 #         noscreen_parset = "{0}/parsets/{1}.noscreen.parset".format(band.outdir, msname)
 
@@ -1035,6 +1035,7 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
             range_end = range_start + int(np.ceil(blockl/solint))
             chunk_obj.solrange = range(range_start, range_end)
             chunk_obj.output = chunk_obj.outdir + '/part' + str(chunk_obj.chunk) + os.path.basename(chunk_obj.dataset)
+            chunk_obj.input_instrument = instrument_orig
             chunk_obj.output_instrument = '{0}/parmdbs/part{1}{2}_instrument'.format(chunk_obj.outdir,
                     chunk_obj.chunk, os.path.basename(chunk_obj.dataset))
             chunk_obj.state_file = '{0}/state/part{1}{2}.done'.format(chunk_obj.outdir,
@@ -1111,6 +1112,11 @@ def run_chunk(chunk_obj):
     try:
         # Split the dataset into parts
         split_ms(chunk_obj.dataset, chunk_obj.output, chunk_obj.t0, chunk_obj.t1)
+
+        # Copy over instrument db
+        if chunk_obj.ionfactor is None:
+            subprocess.call('cp -r {0} {1}/instrument'.
+                format(chunk_obj.input_instrument, chunk_obj.output), shell=True)
 
         # Calibrate
         calibrate_chunk(chunk_obj)

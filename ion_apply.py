@@ -354,9 +354,10 @@ if __name__=='__main__':
                     band.ncores_per_cal = 6
                     band.resume = options.resume
                     band.init_logger = True
-                    band.parmdb = options.parmdb
-                    band.solint_min = options.solint
+                    band.parmdb = out_parmdb_list[i]
+                    band.solint_min = solint_list[i]
                     band.uvmin = 0
+                    band.skymodel = skymodel_list[i]
                     chunk_list, chunk_list_orig = apply_band(band)
 
                     for i, chunk in enumerate(chunk_list):
@@ -368,7 +369,7 @@ if __name__=='__main__':
                     # Copy over the solutions to the final output parmdb
                     try:
                         log.info('Copying distributed solutions to output parmdb...')
-                        instrument_out = out_parmdb + '_total'
+                        instrument_out = out_parmdb_list[i] + '_total'
                         os.system("rm %s -rf" % instrument_out)
                         pdb_out = lofar.parmdb.parmdb(instrument_out, create=True)
                         for chunk_obj in chunk_list_orig:
