@@ -346,7 +346,6 @@ if __name__=='__main__':
                     band.time_block = 10 # number of time samples in a block
                     band.ionfactor = None
                     band.ncores_per_cal = 6
-                    band.uvmin = options.uvmin
                     band.resume = options.resume
                     band.init_logger = True
                     chunk_list = apply_band(band)
