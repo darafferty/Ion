@@ -996,12 +996,12 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
             update_parset(parset)
 
         # Set up the chunks
+        chunk_list = []
         if ionfactor is None:
             chunk_mid_start = 0
             chunk_mid_end = nsols / blockl
             tdiff = tlen
         else:
-            chunk_list = []
             tlen_mod = tlen / 2.0 # hours
             chunk_mid_start = blockl / 2 / solint
             chunk_mid_end = nsols - blockl / 2 / solint
