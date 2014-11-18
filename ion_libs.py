@@ -966,7 +966,10 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
                 blockl = int(np.ceil(fwhm_max / timepersample / 2.0 / solint) * 2 * solint)
         tdiff = solint * timepersample / 3600. # difference between chunk start times in hours
         tlen = timepersample * np.float(blockl) / 3600. # length of block in hours
-        nsols = int(np.ceil(trows / solint)) # number of solutions
+        if ionfactor is None:
+            nsols = int(np.ceil(trows / solint / blockl)) # number of solutions/chunks
+        else:
+            nsols = int(np.ceil(trows / solint)) # number of solutions/chunks
 
         if ionfactor is not None:
             log.info('Performing time-correlated peeling for {0}...\n'
@@ -999,7 +1002,7 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
         chunk_list = []
         if ionfactor is None:
             chunk_mid_start = 0
-            chunk_mid_end = nsols / blockl
+            chunk_mid_end = nsols
             tdiff = tlen
         else:
             tlen_mod = tlen / 2.0 # hours
