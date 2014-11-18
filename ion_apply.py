@@ -310,6 +310,8 @@ if __name__=='__main__':
             os.mkdir(outdir+"/state")
         if not os.path.isdir(outdir+"/parmdbs"):
             os.mkdir(outdir+"/parmdbs")
+        if not os.path.isdir(outdir+"/parsets"):
+            os.mkdir(outdir+"/parsets")
 
         logfilename = options.indir + '/ion_apply.log'
         init_logger(logfilename, debug=options.verbose)
