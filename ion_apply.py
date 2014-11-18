@@ -336,8 +336,11 @@ if __name__=='__main__':
 #                     loglevel=logging.DEBUG, file_to_source='/home/sttf201/init-lofar.sh')
 #                 lb.sync_import('from Ion.ion_libs import *')
 
+                band_list = []
                 for ms in ms_list:
-                    chunk_list = apply_band(ms)
+                    band_list.append(Band(ms, outdir))
+                for band in band_list:
+                    chunk_list = apply_band(band)
 
                     for i, chunk in enumerate(chunk_list):
                         chunk.start_delay = i * 10.0 # start delay in seconds to avoid too much disk IO
