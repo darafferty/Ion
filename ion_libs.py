@@ -1028,7 +1028,7 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
             chunk_obj.skymodel = skymodel
             chunk_obj.logname_root = logname_root + '_part' + str(c)
             chunk_obj.solnum = chunk_obj.chunk
-            chunk_obj.solrange = range(chunk_obj.solnum, chunk_obj.solnum+np.ceil(blockl/solint))
+            chunk_obj.solrange = range(chunk_obj.solnum, chunk_obj.solnum+int(np.ceil(blockl/solint)))
             chunk_obj.output = chunk_obj.outdir + '/part' + str(chunk_obj.chunk) + os.path.basename(chunk_obj.dataset)
             chunk_obj.output_instrument = '{0}/parmdbs/part{1}{2}_instrument'.format(chunk_obj.outdir,
                     chunk_obj.chunk, os.path.basename(chunk_obj.dataset))
