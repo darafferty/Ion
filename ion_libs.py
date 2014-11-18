@@ -915,11 +915,11 @@ def apply_band(band):
         # Perform dir-independent calibration with the TEC screen
         make_screen_parset(screen_parset, solint=band.solint_min,
             beam_mode=band.beam_mode, uvmin=band.uvmin)
-        chunk_list = calibrate(band.outdir+'/'+msname, screen_parset, skymodel, msname,
+        chunk_list, chunk_list_orig = calibrate(band.outdir+'/'+msname, screen_parset, skymodel, msname,
             use_timecorr=True, outdir=band.outdir, instrument=band.parmdb,
             time_block=band.time_block, ionfactor=None, ncores=band.ncores_per_cal,
             resume=band.resume)
-        return chunk_list
+        return chunk_list, chunk_list_orig
     except Exception as e:
         log.error(str(e))
 
@@ -1057,7 +1057,7 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
 
         if len(chunk_list) > 0:
             if ionfactor is None:
-                return chunk_list
+                return chunk_list, chunk_list_orig
 
             # Run chunks in parallel
             pool = multiprocessing.Pool(ncores)
