@@ -841,6 +841,46 @@ def makeFlagParset(h5file, solset):
     return parset
 
 
+def make_screen_parset(parset, solint=1, uvmin=80, freqint=10,
+    beam_mode='DEFAULT'):
+    """Makes BBS parset for dir-indep calibration with screen included"""
+
+    # Handle beam
+    if beam_mode.lower() == 'off':
+        beam_enable = 'F'
+        beam_mode = 'DEFAULT'
+    else:
+        beam_enable = 'T'
+
+    newlines = ['Strategy.Stations = []\n',
+        'Strategy.InputColumn = DATA\n',
+        'Strategy.ChunkSize = 250\n',
+        'Strategy.UseSolver = F\n',
+        'Strategy.Steps = [solve]\n',
+        'Strategy.Baselines = *& \n',
+        'Step.solve.Operation = SOLVE\n',
+        'Step.solve.Model.Sources = []\n',
+        'Step.solve.Model.Ionosphere.Enable = T\n',
+        'Step.solve.Model.Ionosphere.Type = EXPION\n',
+        'Step.solve.Model.Beam.Enable = {0}\n'.format(beam_enable),
+        'Step.solve.Model.Beam.Mode = {0}\n'.format(beam_mode),
+        'Step.solve.Model.Beam.UseChannelFreq = T\n',
+        'Step.solve.Model.Cache.Enable = T\n',
+        'Step.solve.Model.Gain.Enable = F\n',
+        'Step.solve.Model.CommonScalarPhase.Enable= T\n',
+        'Step.solve.Solve.Mode = COMPLEX\n',
+        'Step.solve.Solve.UVRange = [{0}]\n'.format(uvmin),
+        'Step.solve.Solve.Parms = ["CommonScalarPhase:*"]\n',
+        'Step.solve.Solve.CellSize.Freq = {0}\n'.format(freqint),
+        'Step.solve.Solve.CellSize.Time = {0}\n'.format(solint),
+        'Step.solve.Solve.CellChunkSize = 1\n',
+        'Step.solve.Solve.PropagateSolutions = T']
+    f = open(parset, 'w')
+    f.writelines(newlines)
+    f.close()
+    return parset
+
+
 def apply_band(band):
     """Apply TEC screen to band"""
     if band.init_logger:
@@ -858,23 +898,23 @@ def apply_band(band):
 
         # Perform dir-independent calibration without the TEC screen to set up
         # instrument db
-        if not band.resume or (band.resume
-            and not os.path.exists('{0}/state/{1}_dirindep_noscreen.done'.format(band.outdir,
-            band.msname))):
-            make_noscreen_parset(noscreen_parset, scalar_phase=band.use_scalar_phase,
-                sol_int=band.solint_min, beam_mode=band.beam_mode, uvmin=band.uvmin)
-            subprocess.call("calibrate-stand-alone -f {0} {1} {2} > {3}/logs/"
-                "{4}_dirindep_noscreen_calibrate.log 2>&1".format(newmsname, noscreen_parset,
-                skymodel, band.outdir, msname), shell=True)
-
-            # Save state
-            cmd = 'touch {0}/state/{1}_dirindep.done'.format(band.outdir,
-                band.msname)
-            subprocess.call(cmd, shell=True)
+#         if not band.resume or (band.resume
+#             and not os.path.exists('{0}/state/{1}_dirindep_noscreen.done'.format(band.outdir,
+#             band.msname))):
+#             make_noscreen_parset(noscreen_parset, scalar_phase=band.use_scalar_phase,
+#                 sol_int=band.solint_min, beam_mode=band.beam_mode, uvmin=band.uvmin)
+#             subprocess.call("calibrate-stand-alone -f {0} {1} {2} > {3}/logs/"
+#                 "{4}_dirindep_noscreen_calibrate.log 2>&1".format(newmsname, noscreen_parset,
+#                 skymodel, band.outdir, msname), shell=True)
+#
+#             # Save state
+#             cmd = 'touch {0}/state/{1}_dirindep.done'.format(band.outdir,
+#                 band.msname)
+#             subprocess.call(cmd, shell=True)
 
         # Perform dir-independent calibration with the TEC screen
-        make_screen_parset(screen_parset, scalar_phase=band.use_scalar_phase,
-            sol_int=band.solint_min, beam_mode=band.beam_mode, uvmin=band.uvmin)
+        make_screen_parset(screen_parset, sol_int=band.solint_min,
+            beam_mode=band.beam_mode, uvmin=band.uvmin)
         chunk_list = calibrate(newmsname, peelparset_timecorr, skymodel, msname,
             use_timecorr=True, outdir=band.outdir, instrument='instrument',
             time_block=band.time_block, ionfactor=None, parmdb=band.parmdb,
