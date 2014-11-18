@@ -304,6 +304,8 @@ if __name__=='__main__':
             sys.exit()
 
         outdir = options.indir
+        if not os.path.isdir(outdir+"/logs"):
+            os.mkdir(outdir+"/logs")
         if not os.path.isdir(outdir+"/state"):
             os.mkdir(outdir+"/state")
         if not os.path.isdir(outdir+"/parmdbs"):
