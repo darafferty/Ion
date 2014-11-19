@@ -871,8 +871,8 @@ def make_screen_parset(parset, solint=1, uvmin=80, freqint=10,
         'Step.solve.Solve.Mode = COMPLEX\n',
         'Step.solve.Solve.UVRange = [{0}]\n'.format(uvmin),
         'Step.solve.Solve.Parms = ["CommonScalarPhase:*"]\n',
-        'Step.solve.Solve.CellSize.Freq = {0}\n'.format(freqint),
-        'Step.solve.Solve.CellSize.Time = {0}\n'.format(solint),
+        'Step.solve.Solve.CellSize.Freq = {0}\n'.format(int(freqint)),
+        'Step.solve.Solve.CellSize.Time = {0}\n'.format(int(solint)),
         'Step.solve.Solve.CellChunkSize = 1\n',
         'Step.solve.Solve.PropagateSolutions = T']
     f = open(parset, 'w')
@@ -1058,10 +1058,10 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
             else:
                 log.info('Peeling complete for {0}.'.format(msname))
 
-        if len(chunk_list) > 0:
-            if ionfactor is None:
-                return chunk_list, chunk_list_orig
+        if ionfactor is None:
+            return chunk_list, chunk_list_orig
 
+        if len(chunk_list) > 0:
             # Run chunks in parallel
             pool = multiprocessing.Pool(ncores)
             pool.map(run_chunk, chunk_list)
