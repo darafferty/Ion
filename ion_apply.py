@@ -381,7 +381,10 @@ if __name__=='__main__':
                                 continue
                             for parmname in pdb_part.getNames():
                                 v = pdb_part.getValuesGrid(parmname)
-                                pdb_out.addValues(v)
+                                try:
+                                    pdb_out.addValues(v)
+                                except:
+                                    continue
 
 #                         pdb = lofar.parmdb.parmdb(instrument_orig)
 #                         parms = pdb.getValuesGrid("*")
