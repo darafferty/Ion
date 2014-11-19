@@ -338,9 +338,9 @@ if __name__=='__main__':
                 skymodel_list, solint_list)
         else:
             if has_ipy_parallel and options.torque:
-                lb = loadbalance.LoadBalance(ppn=options.ncores, logfile=None,
-                    loglevel=logging.DEBUG, file_to_source='/home/sttf201/init-lofar.sh')
-                lb.sync_import('from Ion.ion_libs import *')
+#                 lb = loadbalance.LoadBalance(ppn=options.ncores, logfile=None,
+#                     loglevel=logging.DEBUG, file_to_source='/home/sttf201/init-lofar.sh')
+#                 lb.sync_import('from Ion.ion_libs import *')
 
                 band_list = []
                 for ms in ms_list:
@@ -364,7 +364,8 @@ if __name__=='__main__':
                         chunk.start_delay = i * 10.0 # start delay in seconds to avoid too much disk IO
 
                     # Map list of bands to the engines
-                    lb.map(run_chunk, chunk_list)
+#                     if len(chunk_list) > 0:
+#                         lb.map(run_chunk, chunk_list)
 
                     # Copy over the solutions to the final output parmdb
                     try:
@@ -407,8 +408,8 @@ if __name__=='__main__':
                     except Exception as e:
                         log.error(str(e))
             else:
-                calibrateBBS(ms_list, out_parmdb_list,
-                    skymodel_list, solint_list, beam_list)
+                calibrateBBS((ms_list, out_parmdb_list,
+                    skymodel_list, solint_list, beam_list))
 
         log.info('TEC screen application complete.')
 
