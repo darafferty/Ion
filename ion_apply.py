@@ -338,9 +338,9 @@ if __name__=='__main__':
                 skymodel_list, solint_list)
         else:
             if has_ipy_parallel and options.torque:
-#                 lb = loadbalance.LoadBalance(ppn=options.ncores, logfile=None,
-#                     loglevel=logging.DEBUG, file_to_source='/home/sttf201/init-lofar.sh')
-#                 lb.sync_import('from Ion.ion_libs import *')
+                lb = loadbalance.LoadBalance(ppn=options.ncores, logfile=None,
+                    loglevel=logging.DEBUG, file_to_source='/home/sttf201/init-lofar.sh')
+                lb.sync_import('from Ion.ion_libs import *')
 
                 band_list = []
                 for ms in ms_list:
@@ -364,8 +364,8 @@ if __name__=='__main__':
                         chunk.start_delay = i * 10.0 # start delay in seconds to avoid too much disk IO
 
                     # Map list of bands to the engines
-#                     if len(chunk_list) > 0:
-#                         lb.map(run_chunk, chunk_list)
+                    if len(chunk_list) > 0:
+                        lb.map(run_chunk, chunk_list)
 
                     # Copy over the solutions to the final output parmdb
                     try:
@@ -373,18 +373,20 @@ if __name__=='__main__':
                         instrument_out = out_parmdb_list[i] + '_total'
                         os.system("rm %s -rf" % instrument_out)
                         pdb_out = lofar.parmdb.parmdb(instrument_out, create=True)
-                        for chunk_obj in chunk_list_orig:
+                        for j, chunk_obj in enumerate(chunk_list_orig):
                             chunk_instrument = chunk_obj.output_instrument
                             try:
                                 pdb_part = lofar.parmdb.parmdb(chunk_instrument)
                             except:
                                 continue
+                            log.info('  copying part{0}'.format(j))
                             for parmname in pdb_part.getNames():
-                                v = pdb_part.getValuesGrid(parmname)
-                                try:
-                                    pdb_out.addValues(v)
-                                except:
-                                    continue
+                                if j == 0 or 'Phase' in parmname:
+                                    v = pdb_part.getValuesGrid(parmname)
+                                    try:
+                                        pdb_out.addValues(v)
+                                    except:
+                                        continue
 
 #                         pdb = lofar.parmdb.parmdb(instrument_orig)
 #                         parms = pdb.getValuesGrid("*")
