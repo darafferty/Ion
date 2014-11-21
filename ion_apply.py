@@ -370,7 +370,7 @@ if __name__=='__main__':
                     # Copy over the solutions to the final output parmdb
                     try:
                         log.info('Copying distributed solutions to output parmdb...')
-                        instrument_out = out_parmdb_list[i] + '_total'
+                        instrument_out = '{0}/{1}/'.format(band.outdir, band.msname) + out_parmdb_list[i] + '_total'
                         os.system("rm %s -rf" % instrument_out)
                         pdb_out = lofar.parmdb.parmdb(instrument_out, create=True)
                         for j, chunk_obj in enumerate(chunk_list_orig):
