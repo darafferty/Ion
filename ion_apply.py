@@ -362,11 +362,10 @@ if __name__=='__main__':
                     if chunk_list is None or chunk_list_orig is None:
                         continue
 
-                    for i, chunk in enumerate(chunk_list):
-                        chunk.start_delay = i * 10.0 # start delay in seconds to avoid too much disk IO
-
                     # Map list of bands to the engines
                     if len(chunk_list) > 0:
+                        for i, chunk in enumerate(chunk_list):
+                            chunk.start_delay = i * 10.0 # start delay in seconds to avoid too much disk IO
                         lb.map(run_chunk, chunk_list)
 
                     # Copy over the solutions to the final output parmdb
