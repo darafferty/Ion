@@ -338,9 +338,9 @@ if __name__=='__main__':
                 skymodel_list, solint_list)
         else:
             if has_ipy_parallel and options.torque:
-#                 lb = loadbalance.LoadBalance(ppn=options.ncores, logfile=None,
-#                     loglevel=logging.DEBUG, file_to_source='/home/sttf201/init-lofar.sh')
-#                 lb.sync_import('from Ion.ion_libs import *')
+                lb = loadbalance.LoadBalance(ppn=options.ncores, logfile=None,
+                    loglevel=logging.DEBUG, file_to_source='/home/sttf201/init-lofar.sh')
+                lb.sync_import('from Ion.ion_libs import *')
 
                 band_list = []
                 for ms in ms_list:
@@ -359,13 +359,15 @@ if __name__=='__main__':
                     band.uvmin = 0
                     band.skymodel = skymodel_list[i]
                     chunk_list, chunk_list_orig = apply_band(band)
+                    if chunk_list is None or chunk_list_orig is None:
+                        continue
 
                     for i, chunk in enumerate(chunk_list):
                         chunk.start_delay = i * 10.0 # start delay in seconds to avoid too much disk IO
 
                     # Map list of bands to the engines
-#                     if len(chunk_list) > 0:
-#                         lb.map(run_chunk, chunk_list)
+                    if len(chunk_list) > 0:
+                        lb.map(run_chunk, chunk_list)
 
                     # Copy over the solutions to the final output parmdb
                     try:
@@ -387,29 +389,6 @@ if __name__=='__main__':
                                         pdb_out.addValues(v)
                                     except:
                                         continue
-
-#                         pdb = lofar.parmdb.parmdb(instrument_orig)
-#                         parms = pdb.getValuesGrid("*")
-#                         for chunk_obj in chunk_list_orig:
-#                             chunk_instrument = chunk_obj.output_instrument
-#                             try:
-#                                 pdb_part = lofar.parmdb.parmdb(chunk_instrument)
-#                             except:
-#                                 continue
-#                             parms_part = pdb_part.getValuesGrid("*")
-#                             keynames = parms_part.keys()
-#
-#                             # Replace old value with new
-#                             for key in keynames:
-#                             # Hard-coded to look for Phase and/or TEC parms
-#                             # Presumably OK to use other parms with additional 'or' statments
-#                                 if 'Phase' in key or 'TEC' in key:
-#                                     parms[key]['values'][chunk_obj.solrange, 0] = np.copy(
-#                                         parms_part[key]['values'][0:len(chunk_obj.solrange), 0])
-#
-#                         # Add new values to final output parmdb
-#                         pdb_out = lofar.parmdb.parmdb(instrument_out, create=True)
-#                         pdb_out.addValues(parms)
                     except Exception as e:
                         log.error(str(e))
             else:

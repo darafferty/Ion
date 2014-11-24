@@ -894,23 +894,6 @@ def apply_band(band):
         msname = band.msname
         skymodel =  band.skymodel
         screen_parset = "{0}/parsets/{1}.screen.parset".format(band.outdir, msname)
-#         noscreen_parset = "{0}/parsets/{1}.noscreen.parset".format(band.outdir, msname)
-
-        # Perform dir-independent calibration without the TEC screen to set up
-        # instrument db
-#         if not band.resume or (band.resume
-#             and not os.path.exists('{0}/state/{1}_dirindep_noscreen.done'.format(band.outdir,
-#             band.msname))):
-#             make_noscreen_parset(noscreen_parset, scalar_phase=band.use_scalar_phase,
-#                 sol_int=band.solint_min, beam_mode=band.beam_mode, uvmin=band.uvmin)
-#             subprocess.call("calibrate-stand-alone -f {0} {1} {2} > {3}/logs/"
-#                 "{4}_dirindep_noscreen_calibrate.log 2>&1".format(newmsname, noscreen_parset,
-#                 skymodel, band.outdir, msname), shell=True)
-#
-#             # Save state
-#             cmd = 'touch {0}/state/{1}_dirindep.done'.format(band.outdir,
-#                 band.msname)
-#             subprocess.call(cmd, shell=True)
 
         # Perform dir-independent calibration with the TEC screen
         make_screen_parset(screen_parset, solint=band.solint_min,
