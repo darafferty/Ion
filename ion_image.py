@@ -368,8 +368,8 @@ if __name__=='__main__':
 
         # Define image properties, etc.
         imagedir = options.outdir
-        imageroots = ['screen']
-        use_ions = [True]
+        imageroots = [] #['screen']
+        use_ions = [] #[True]
         if options.noscreen:
             imageroots.append('noscreen')
             use_ions.append(False)
