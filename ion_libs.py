@@ -1009,6 +1009,8 @@ def calibrate(msname, parset, skymodel, logname_root, use_timecorr=False,
                 chunk_obj.trim_start = False
                 chunk_obj.t0 = tdiff*float(chunk_obj.chunk - chunk_mid_start) # hours
                 chunk_obj.t1 = np.float(chunk_obj.t0) + tlen # hours
+            if c == nsols-1:
+                chunk_obj.t1 += tlen # make sure last chunks gets everything that remains
             chunk_obj.ionfactor = ionfactor
             chunk_obj.parset = parset
             chunk_obj.skymodel = skymodel
